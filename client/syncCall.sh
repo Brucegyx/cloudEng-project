@@ -7,6 +7,19 @@
 # echo "JSON RESULT:"
 # echo $output | jq
 # echo ""
+
+
+
+#Load File to s3 bucket. NOTE: terminal which this is run in must have IAM user
+# setup as well as having access key updated for CLI
+echo "Bucket before upload"
+aws s3 ls s3://test.bucket.462562f23.yx
+echo "Name of file being uploaded"
+echo $1
+aws s3 cp ../data/$1 s3://test.bucket.462562f23.yx/
+echo "Bucket after upload"
+aws s3 ls s3://test.bucket.462562f23.yx
+
 ###### calling service 2 ######
 # JSON object to pass to Lambda Function
 json={"\"name\"":"\"Susan\u0020Smith\",\"param1\"":1,\"param2\"":2,\"param3\"":3}

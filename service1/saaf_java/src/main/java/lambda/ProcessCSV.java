@@ -16,6 +16,7 @@ import java.util.Date;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -38,7 +39,7 @@ import java.util.logging.Level;
  * @author Wes Lloyd
  * @author Robert Cordingly
  */
-public class ProcessCSV implements RequestHandler<HashMap<String, Object>, HashMap<String, Object>> {
+public class ProcessCSV implements RequestHandler<Request, HashMap<String, Object>> {
     private static AmazonS3 s3Client = AmazonS3ClientBuilder.standard().build();
 
     /**
@@ -48,7 +49,7 @@ public class ProcessCSV implements RequestHandler<HashMap<String, Object>, HashM
      * @param context 
      * @return HashMap that Lambda will automatically convert into JSON.
      */
-    public HashMap<String, Object> handleRequest(HashMap<String, Object> request, Context context) {
+    public HashMap<String, Object> handleRequest(Request request, Context context) {
         
         //Collect inital data.
         Inspector inspector = new Inspector();
@@ -57,9 +58,9 @@ public class ProcessCSV implements RequestHandler<HashMap<String, Object>, HashM
         //****************START FUNCTION IMPLEMENTATION*************************
         //Add custom key/value attribute to SAAF's output. (OPTIONAL)
         // select csv file from s3 based on bucketname and filename
-        String bucketname = request.get("bucketName").toString();
-        String filename = request.get("key").toString();
-
+        String bucketname = request.getBucketname();
+        String filename = request.getFilename();
+        logger.log("finding file in bucketname:" + bucketname + ", filename:" + filename);
 
         //create new file on s3
         

@@ -19,8 +19,17 @@ echo $1
 aws s3 cp ../data/$1 s3://test.bucket.462562f23.yx/
 echo "Bucket after upload"
 aws s3 ls s3://test.bucket.462562f23.yx
+# Call service 1 lambda function with the target bucket name and file name to transform 
+json={"\"bucketname\"":\"test.bucket.462562f23.yx\"","\"filename\"":\"$1\""}
 
+echo "Invoking service 1 using API Gateway"
+time output=`curl -s -H "Content-Type: application/json" -X POST -d $json https://l8ges5uu0h.execute-api.us-east-2.amazonaws.com/Transform/`
 
+echo "Service 1 JSON RESULT:"
+echo $output | jq
+
+echo "Transform Bucket"
+aws s3 ls s3://transformed-csv
 ###### calling service 2 ######
 # JSON object to pass to Lambda Function
 json={"\"name\"":"\"Susan\u0020Smith\",\"param1\"":1,\"param2\"":2,\"param3\"":3}
@@ -34,13 +43,5 @@ echo "JSON RESULT:"
 echo $output | jq
 echo ""
 
-echo "Transform Bucket"
-aws s3 ls s3://transformed-csv
 
-# echo "Invoking Lambda function using AWS CLI"
-# time output=`aws lambda invoke --invocation-type RequestResponse --function-name Service2 --region us-east-2 --payload $json /dev/stdout | head -n 1 | head -c -2 ; echo`
 
-# echo ""
-# echo "JSON RESULT:"
-# echo $output | jq
-# echo ""

@@ -59,31 +59,38 @@ public class HelloMySQL implements RequestHandler<Request, HashMap<String, Objec
             String username = properties.getProperty("username");
             String password = properties.getProperty("password");
             String driver = properties.getProperty("driver");
-            
-            r.setValue(request.getName());
-            // Manually loading the JDBC Driver is commented out
-            // No longer required since JDBC 4
-            // Class.forName(driver);
-            Connection con = DriverManager.getConnection(url,username,password);
+
+            String dbName = "TEST";
+            String tableName = "mytable";
 
 
             // // // Generate Database and Table // // //
+            try {
+                Connection conPre = DriverManager.getConnection(url,username,password);
+                Statement stmt = conPre.createStatement();
+                String sql_createDB = "CREATE DATABASE IF NOT EXISTS " + dbName;
+                stmt.executeUpdate(sql_createDB);
 
-            Statement stmt = con.createStatement();
-            String sql_createDB = "CREATE DATABASE IF NOT EXISTS TEST";
-            stmt.executeUpdate(sql_createDB);
-
-            String sql_createTable = 
-                    "CREATE TABLE IF NOT EXISTS mytable (" +
-                    "name VARCHAR(40), " +
-                    "col2 VARCHAR(40), " +
-                    "col3 VARCHAR(40))";
-            
-            stmt.executeUpdate(sql_createTable);
-            
-            // // // // // // // // // // // // // // // //
+                stmt.executeUpdate("USE " + dbName);
+                String sql_createTable = 
+                        "CREATE TABLE IF NOT EXISTS "+ tableName +" (" +
+                        "name VARCHAR(40), " +
+                        "col2 VARCHAR(40), " +
+                        "col3 VARCHAR(40))";
                 
+                stmt.executeUpdate(sql_createTable);
+            } catch (Exception e) {
+                logger.log("Got an exception in Generate Database and Table! ");
+                logger.log(e.getMessage());
+            }
+
             
+            // // // // // // // // // // // // // // // // /TEST
+            url += "/" + dbName;
+                
+            r.setValue(request.getName());
+            Connection con = DriverManager.getConnection(url,username,password);
+
             PreparedStatement ps = con.prepareStatement("insert into mytable values('" + request.getName() + "','b','c');");
             ps.execute();
             ps = con.prepareStatement("select * from mytable;");

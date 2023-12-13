@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.Statement;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.LinkedList;
@@ -68,7 +69,7 @@ public class HelloMySQL implements RequestHandler<Request, HashMap<String, Objec
 
             // // // Generate Database and Table // // //
 
-            Statement stmt = conn.createStatement();
+            Statement stmt = con.createStatement();
             String sql_createDB = "CREATE DATABASE IF NOT EXISTS TEST";
             stmt.executeUpdate(sql_createDB);
 

@@ -176,29 +176,46 @@ public class HelloMySQL implements RequestHandler<Request, HashMap<String, Objec
             }
 
 
-            con.close();
-
-            // String selectSql = "SELECT * FROM " + tableName + " LIMIT 10";
-            // try (Statement selectStmt = con.createStatement();
-            //      ResultSet rs = selectStmt.executeQuery(selectSql)) {
+            // retrieves only the first 10 rows of table
+            String selectSql = "SELECT * FROM " + tableName + " LIMIT 10";
+            try (Statement selectStmt = con.createStatement();
+                 ResultSet rs = selectStmt.executeQuery(selectSql)) {
+                
+                int row = 1;
             
-            //     while (rs.next()) {
-            //         // Retrieve and log each column value
-            //         // Example for a table with two columns: column1 (String), column2 (Integer)
-            //         String c1 = rs.getString("OrderID");
-            //         String c2 = rs.getString("Region");
-            //         int column2Value = rs.getInt("column2");
-            //         logger.log("Row: " + c1 + ", " + c2);
-            //         // Add additional logging or processing as needed
-            //     }
-            // } catch (SQLException e) {
-            //     logger.log("SQL Exception while selecting data: " + e.getMessage());
-            // } catch (Exception e) {
-            //     logger.log("Got an exception working with MySQL! ");
-            //     logger.log(e.getMessage());
-            // }
+                while (rs.next()) {
+                    // Retrieve each column value
+                    String c1 = rs.getString("OrderID");
+                    String c2 = rs.getString("Region");
+                    String c3 = rs.getString("Country");
+                    String c4 = rs.getString("ItemType");
+                    String c5 = rs.getString("SalesChannel");
+                    String c6 = rs.getString("OrderPriority");
+                    String c7 = rs.getString("OrderDate");
+                    String c8 = rs.getString("ShipDate");
+                    String c9 = rs.getInt("UnitsSold");
+                    String c10 = rs.getDouble("UnitPrice");
+                    String c11 = rs.getDouble("UnitCost");
+                    String c12 = rs.getDouble("TotalRevenue");
+                    String c13 = rs.getDouble("TotalCost");
+                    String c14 = rs.getDouble("TotalProfit");
+                    String c15 = rs.getInt("OrderProcessingTime");
+                    String c16 = rs.getDouble("GrossMargin");
 
 
+                    logger.log("Row"+ row +": "+ c1 +", "+ c2 +", "+ c3 +", "+ c4 +", "+ c5 +", "+ 
+                            c6 +", "+ c7 +", "+ c8 +", "+ c9 +", "+ c10 +", "+ c11 +", "+ c12 +", "+ 
+                            c13 +", "+ c14 +", "+ c15 +", "+ c16);
+
+                }
+            } catch (SQLException e) {
+                logger.log("SQL Exception while selecting data: " + e.getMessage());
+            } catch (Exception e) {
+                logger.log("Got an exception working with MySQL! ");
+                logger.log(e.getMessage());
+            }
+
+            con.close();
 
 
             // ************* OLD ********************** //

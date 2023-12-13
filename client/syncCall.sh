@@ -32,9 +32,11 @@ echo "Transform Bucket"
 aws s3 ls s3://transformed-csv
 ###### calling service 2 ######
 # JSON object to pass to Lambda Function
-json={"\"name\"":"\"Susan\u0020Smith\",\"param1\"":1,\"param2\"":2,\"param3\"":3}
+transformedFile="transformed-$1"
+echo $transformedFile
+json={"\"outputBucketName\"":\"transformed-csv\"","\"transformedFileName\"":\"$transformedFile\""}
 
-echo "Invoking Lambda function using API Gateway"
+echo "Invoking Service 2 using API Gateway"
 time output=`curl -s -H "Content-Type: application/json" -X POST -d $json https://v8le7b4h00.execute-api.us-east-2.amazonaws.com/Load`
 echo ""
 

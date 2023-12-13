@@ -6,6 +6,11 @@ import saaf.Inspector;
 import com.amazonaws.services.lambda.runtime.ClientContext;
 import com.amazonaws.services.lambda.runtime.CognitoIdentity;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.amazonaws.services.s3.model.GetObjectRequest;
+import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.services.s3.model.S3Object;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -49,12 +54,12 @@ public class HelloSqlite implements RequestHandler<Request, HashMap<String, Obje
         Inspector inspector = new Inspector();
         //inspector.inspectAll();
 
-        string bucketName = request.getOutputBucketName();
+        String bucketName = request.getOutputBucketName();
         String fileName = request.getTransformedFileName();
         logger.log("Finding file in bucketname: " + bucketName + ", filename: " + fileName);
 
         // Export SQLite DB file to S3
-        String outputBucketName = "sqlite-db";
+        String outputBucketName = "sqlite-db562";
         String outputFileName = fileName.substring(0, fileName.lastIndexOf('.')) + ".db";
 
         // Download CSV file from S3
@@ -74,9 +79,10 @@ public class HelloSqlite implements RequestHandler<Request, HashMap<String, Obje
         HashMap<String, Object> response = new HashMap<>();
         response.put("status", "success");
         response.put("message", "SQLite database exported to bucket: " + outputBucketName + ", filename: " + outputFileName);
-        inspector.consumeResponse(response);
+        // inspector.consumeResponse(response);
 
-        return inspector.finish();
+        inspector.finish();
+        return response;
         
     }
 
@@ -109,7 +115,7 @@ public class HelloSqlite implements RequestHandler<Request, HashMap<String, Obje
     private void loadCsvDataIntoDatabase(File csvFile, File sqliteFile, LambdaLogger logger) {
         try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + sqliteFile.getAbsolutePath())) {
             String createTableQuery = "CREATE TABLE IF NOT EXISTS orders ("
-                    + "OrderID TEXT PRIMARY KEY, "
+                    + "OrderID INTEGER PRIMARY KEY, "
                     + "Region TEXT, "
                     + "Country TEXT, "
                     + "ItemType TEXT, "
@@ -158,7 +164,7 @@ public class HelloSqlite implements RequestHandler<Request, HashMap<String, Obje
             }
             logger.log("Loaded data into SQLite database");
         } catch (SQLException | IOException e) {
-            throw new RuntimeException("Error loading data into SQLite database: ", e.getMessage(), e);
+            throw new RuntimeException("Error loading data into SQLite database: "+ e.getMessage(), e);
         }
     }
  

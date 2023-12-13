@@ -62,8 +62,26 @@ public class HelloMySQL implements RequestHandler<Request, HashMap<String, Objec
             r.setValue(request.getName());
             // Manually loading the JDBC Driver is commented out
             // No longer required since JDBC 4
-            //Class.forName(driver);
+            // Class.forName(driver);
             Connection con = DriverManager.getConnection(url,username,password);
+
+
+            // // // Generate Database and Table // // //
+
+            Statement stmt = conn.createStatement();
+            String sql_createDB = "CREATE DATABASE IF NOT EXISTS TEST";
+            stmt.executeUpdate(sql_createDB);
+
+            String sql_createTable = 
+                    "CREATE TABLE IF NOT EXISTS mytable (" +
+                    "name VARCHAR(40), " +
+                    "col2 VARCHAR(40), " +
+                    "col3 VARCHAR(40))";
+            
+            stmt.executeUpdate(sql_createTable);
+            
+            // // // // // // // // // // // // // // // //
+                
             
             PreparedStatement ps = con.prepareStatement("insert into mytable values('" + request.getName() + "','b','c');");
             ps.execute();

@@ -7,6 +7,24 @@ package lambda;
 public class Request {
 
     String name;
+    String outputBucketName;
+    String transformedFileName;
+
+    public String getOutputBucketName() {
+        return outputBucketName;
+    }
+
+    public void setOutputBucketName(String outputBucketName) {
+        this.outputBucketName = outputBucketName;
+    }
+
+    public String getTransformedFileName() {
+        return transformedFileName;
+    }
+
+    public void setTransformedFileName(String transformedFileName) {
+        this.transformedFileName = transformedFileName;
+    }
 
     public String getName() {
         return name;

@@ -7,7 +7,13 @@ import com.amazonaws.services.lambda.runtime.ClientContext;
 import com.amazonaws.services.lambda.runtime.CognitoIdentity;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -15,6 +21,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Scanner;
 import java.util.HashMap;
 import java.util.UUID;
 
@@ -25,7 +32,9 @@ import java.util.UUID;
  * @author Robert Cordingly
  */
 public class HelloSqlite implements RequestHandler<Request, HashMap<String, Object>> {
-    static int uses = 0;
+    //private static final String DB_URL = "jdbc:sqlite:/tmp/sqlite.db";
+    private static AmazonS3 s3Client = AmazonS3ClientBuilder.standard().build();
+
     /**
      * Lambda Function Handler
      * 
@@ -34,123 +43,139 @@ public class HelloSqlite implements RequestHandler<Request, HashMap<String, Obje
      * @return HashMap that Lambda will automatically convert into JSON.
      */
     public HashMap<String, Object> handleRequest(Request request, Context context) {
-
         // Create logger
         LambdaLogger logger = context.getLogger();
-        
         //Collect inital data.
         Inspector inspector = new Inspector();
         //inspector.inspectAll();
+
+        string bucketName = request.getOutputBucketName();
+        String fileName = request.getTransformedFileName();
+        logger.log("Finding file in bucketname: " + bucketName + ", filename: " + fileName);
+
+        // Export SQLite DB file to S3
+        String outputBucketName = "sqlite-db";
+        String outputFileName = fileName.substring(0, fileName.lastIndexOf('.')) + ".db";
+
+        // Download CSV file from S3
+        File csvFile = downloadFileFromS3(bucketName, fileName);
+        // Create SQLite database file
+        File sqliteFile = new File("/tmp/" + outputFileName);
+
+        // Load CSV data into SQLite database
+        loadCsvDataIntoDatabase(csvFile, sqliteFile, logger);
         
-        //****************START FUNCTION IMPLEMENTATION*************************
-        //Add custom key/value attribute to SAAF's output. (OPTIONAL)
-        
-        //Create and populate a separate response object for function output. (OPTIONAL)
-        Response r = new Response();
-        
-        String pwd = System.getProperty("user.dir");
-        logger.log("pwd=" + pwd);
+        // Export SQLite database to S3
+        exportDatabaseToS3(sqliteFile, outputBucketName, outputFileName, logger);
 
-        logger.log("set pwd to tmp");        
-        setCurrentDirectory("/tmp");
-        
-        pwd = System.getProperty("user.dir");
-        logger.log("pwd=" + pwd);
-        // UNCOMMENT THIS SECTION TO USE SQLITE DB
-/*         try
-        {
-            // Connection string an in-memory SQLite DB ( CHANGE THIS TO A EC2 INSTANCE SQLITE DB)
-            Connection con = DriverManager.getConnection("jdbc:sqlite:"); 
+        logger.log("Exporting SQLite database to bucket: " + outputBucketName + ", filename: " + outputFileName);
 
-            // Connection string for a file-based SQlite DB
-            //Connection con = DriverManager.getConnection("jdbc:sqlite:/tmp/mytest.db");
+        // Create and populate a response object
+        HashMap<String, Object> response = new HashMap<>();
+        response.put("status", "success");
+        response.put("message", "SQLite database exported to bucket: " + outputBucketName + ", filename: " + outputFileName);
+        inspector.consumeResponse(response);
 
-            // Detect if the table 'mytable' exists in the database
-            PreparedStatement ps = con.prepareStatement("SELECT name FROM sqlite_master WHERE type='table' AND name='mytable'");
-            ResultSet rs = ps.executeQuery();
-            if (!rs.next())
-            {
-                // 'mytable' does not exist, and should be created
-                logger.log("trying to create table 'mytable'");
-                ps = con.prepareStatement("CREATE TABLE mytable ( name text, col2 text, col3 text);");
-                ps.execute();
-            }
-            rs.close();
-
-            // Insert row into mytable
-            ps = con.prepareStatement("insert into mytable values('" + request.getName() + "','" +
-                 UUID.randomUUID().toString().substring(0,8) + "','" + UUID.randomUUID().toString().substring(0,4) + "');");
-            ps.execute();
-
-            // Query mytable to obtain full resultset
-            
-            rs = ps.executeQuery();
-
-            // Load query results for [name] column into a Java Linked List
-            // ignore [col2] and [col3] 
-            LinkedList<String> ll = new LinkedList<String>();
-            while (rs.next())
-            {
-                logger.log("name=" + rs.getString("name"));
-                ll.add(rs.getString("name"));
-                logger.log("col2=" + rs.getString("col2"));
-                logger.log("col3=" + rs.getString("col3"));
-            }
-            rs.close();
-            con.close();  
-
-            r.setNames(ll);
-            
-            // sleep to ensure that concurrent calls obtain separate Lambdas
-            try
-            {
-                Thread.sleep(200);
-            }
-            catch (InterruptedException ie)
-            {
-                logger.log("interrupted while sleeping...");
-            }
-        }
-        catch (SQLException sqle)
-        {
-            logger.log("DB ERROR:" + sqle.toString());
-            sqle.printStackTrace();
-        }
- */
-        // *********************************************************************
-        // Set hello message here
-        // *********************************************************************
-        uses += 1;
-        String hello = "Hello this is sqlite load service"  + " calls: " + uses ;
-
-        // Set return result in Response class, class is marshalled into JSON
-        r.setValue(hello);
-        // Test code for this to work -------------
-        LinkedList<String> names = new LinkedList<String>();
-        names.add("name1");
-        r.setNames(names);
-        // Test code for this to work -----------------
-        inspector.consumeResponse(r);
-        
-        //****************END FUNCTION IMPLEMENTATION***************************
-        
-        //Collect final information such as total runtime and cpu deltas.
-        //inspector.inspectAllDeltas();
         return inspector.finish();
+        
     }
-    
-    public static boolean setCurrentDirectory(String directory_name)
-    {
-        boolean result = false;  // Boolean indicating whether directory was set
-        File    directory;       // Desired current working directory
 
-        directory = new File(directory_name).getAbsoluteFile();
-        if (directory.exists() || directory.mkdirs())
-        {
-            result = (System.setProperty("user.dir", directory.getAbsolutePath()) != null);
+    /*
+     * Download CSV file from S3
+     * param bucketName S3 bucket name
+     * param fileName S3 file name
+     * return CSV file
+     */
+    private File downloadFileFromS3(String bucketName, String fileName) {
+        try {
+            // Download CSV file from S3
+            S3Object s3Object = s3Client.getObject(new GetObjectRequest(bucketName, fileName));
+            // Create temporary file
+            File csvFile = File.createTempFile("csv-", ".tmp");
+            // Copy S3Object content to temp file
+            Files.copy(s3Object.getObjectContent(), csvFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            return csvFile;
+        } catch (IOException e) {
+            throw new RuntimeException("Error downloading file from S3: " + e.getMessage(), e);
         }
+    }
 
-        return result;
+    /*
+     * Load CSV data into SQLite database
+     * param csvFile CSV file to load into SQLite database
+     * param sqliteFile SQLite database file
+     * param logger LambdaLogger object
+     */
+    private void loadCsvDataIntoDatabase(File csvFile, File sqliteFile, LambdaLogger logger) {
+        try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + sqliteFile.getAbsolutePath())) {
+            String createTableQuery = "CREATE TABLE IF NOT EXISTS orders ("
+                    + "OrderID TEXT PRIMARY KEY, "
+                    + "Region TEXT, "
+                    + "Country TEXT, "
+                    + "ItemType TEXT, "
+                    + "SalesChannel TEXT, "
+                    + "OrderPriority TEXT, "
+                    + "OrderDate TEXT, "
+                    + "ShipDate TEXT, "
+                    + "UnitsSold INTEGER, "
+                    + "UnitPrice REAL, "
+                    + "UnitCost REAL, "
+                    + "TotalRevenue REAL, "
+                    + "TotalCost REAL, "
+                    + "TotalProfit REAL, "
+                    + "OrderProcessingTime INTEGER, "
+                    + "GrossMargin REAL)";
+            connection.createStatement().executeUpdate(createTableQuery);
+
+            // Insert data into SQLite database
+            String insertDataQuery = "INSERT INTO orders VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+            try (Scanner scanner = new Scanner(csvFile)) {
+                PreparedStatement preparedStatement = connection.prepareStatement(insertDataQuery);
+                scanner.nextLine(); // Skip the header line
+
+                while (scanner.hasNext()) {
+                    String[] fields = scanner.nextLine().split(",");
+                    preparedStatement.setString(1, fields[6]); // OrderID (Primary Key)
+                    preparedStatement.setString(2, fields[0]); // Region
+                    preparedStatement.setString(3, fields[1]); // Country
+                    preparedStatement.setString(4, fields[2]); // ItemType
+                    preparedStatement.setString(5, fields[3]); // SalesChannel
+                    preparedStatement.setString(6, fields[4]); // OrderPriority
+                    preparedStatement.setString(7, fields[5]); // OrderDate
+                    preparedStatement.setString(8, fields[7]); // ShipDate
+                    preparedStatement.setInt(9, Integer.parseInt(fields[8])); // UnitsSold
+                    preparedStatement.setDouble(10, Double.parseDouble(fields[9])); // UnitPrice
+                    preparedStatement.setDouble(11, Double.parseDouble(fields[10])); // UnitCost
+                    preparedStatement.setDouble(12, Double.parseDouble(fields[11])); // TotalRevenue
+                    preparedStatement.setDouble(13, Double.parseDouble(fields[12])); // TotalCost
+                    preparedStatement.setDouble(14, Double.parseDouble(fields[13])); // TotalProfit
+                    preparedStatement.setInt(15, Integer.parseInt(fields[14])); // OrderProcessingTime
+                    preparedStatement.setDouble(16, Double.parseDouble(fields[15])); // GrossMargin
+                    // Set prepared statement fields based on CSV fields
+                    preparedStatement.executeUpdate();
+                }
+            }
+            logger.log("Loaded data into SQLite database");
+        } catch (SQLException | IOException e) {
+            throw new RuntimeException("Error loading data into SQLite database: ", e.getMessage(), e);
+        }
+    }
+ 
+    /*
+     * Export SQLite database to S3
+     * param sqliteFile SQLite database file
+     * param bucketName S3 bucket name
+     * param fileName S3 file name
+     * param logger LambdaLogger object
+     */
+    private void exportDatabaseToS3(File sqliteFile, String bucketName, String fileName, LambdaLogger logger) {
+        try {
+            s3Client.putObject(bucketName, fileName, sqliteFile);
+            logger.log("Database exported to S3 successfully.");
+        } catch (Exception e) {
+            throw new RuntimeException("Error exporting SQLite database to S3: " + e.getMessage(), e);
+        }
     }
 
 

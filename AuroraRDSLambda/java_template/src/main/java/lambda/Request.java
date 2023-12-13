@@ -6,6 +6,27 @@ package lambda;
  */
 public class Request {
 
+    private String bucketName;
+    private String objectKey;
+
+    // Getters and setters
+    public String getBucketName() {
+        return bucketName;
+    }
+
+    public void setBucketName(String bucketName) {
+        this.bucketName = bucketName;
+    }
+
+    public String getObjectKey() {
+        return objectKey;
+    }
+
+    public void setObjectKey(String objectKey) {
+        this.objectKey = objectKey;
+    }
+
+    
     String name;
 
     public String getName() {

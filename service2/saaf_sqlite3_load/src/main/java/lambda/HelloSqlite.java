@@ -64,12 +64,17 @@ public class HelloSqlite implements RequestHandler<Request, HashMap<String, Obje
 
         // Download CSV file from S3
         File csvFile = downloadFileFromS3(bucketName, fileName);
+
+        logger.log("Downloaded file from bucket: " + bucketName + ", filename: " + fileName);
+
         // Create SQLite database file
         File sqliteFile = new File("/tmp/" + outputFileName);
 
         // Load CSV data into SQLite database
         loadCsvDataIntoDatabase(csvFile, sqliteFile, logger);
         
+        logger.log("Loaded CSV data into SQLite database.");
+
         // Export SQLite database to S3
         exportDatabaseToS3(sqliteFile, outputBucketName, outputFileName, logger);
 
@@ -162,7 +167,6 @@ public class HelloSqlite implements RequestHandler<Request, HashMap<String, Obje
                     preparedStatement.executeUpdate();
                 }
             }
-            logger.log("Loaded data into SQLite database");
         } catch (SQLException | IOException e) {
             throw new RuntimeException("Error loading data into SQLite database: "+ e.getMessage(), e);
         }

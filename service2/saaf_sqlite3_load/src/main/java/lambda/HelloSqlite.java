@@ -84,12 +84,8 @@ public class HelloSqlite implements RequestHandler<Request, HashMap<String, Obje
 
         // Create and populate a response object
         Response r = new Response(); 
-        r.setStatus("success");
-        r.setMessage("SQLite database exported to bucket: " + outputBucketName + ", filename: " + outputFileName);
+        r.setValue("Status:Success exported:" + outputBucketName + "filename:" + outputFileName);
         
-//        HashMap<String, Object> response = new HashMap<>();
-//        response.put("status", "success");
-//        response.put("message", "SQLite database exported to bucket: " + outputBucketName + ", filename: " + outputFileName);
         inspector.consumeResponse(r);
 
         inspector.inspectAllDeltas();

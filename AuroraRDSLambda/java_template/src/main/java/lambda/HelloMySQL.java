@@ -5,7 +5,6 @@ import com.amazonaws.services.lambda.runtime.CognitoIdentity;
 import com.amazonaws.services.lambda.runtime.Context; 
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
-// import com.amazonaws.services.lambda.runtime.events.S3Event;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.event.S3EventNotification.S3EventNotificationRecord;
@@ -15,7 +14,6 @@ import com.amazonaws.services.s3.model.GetObjectRequest;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
-
 
 import java.io.BufferedReader;
 import java.io.FileInputStream;
@@ -37,6 +35,7 @@ import java.util.Scanner;
 
 import saaf.Inspector;
 import java.util.HashMap;
+
 
 /**
  * uwt.lambda_test::handleRequest
@@ -80,31 +79,32 @@ public class HelloMySQL implements RequestHandler<Request, HashMap<String, Objec
             String password = properties.getProperty("password");
             String driver = properties.getProperty("driver");
 
-            String dbName = "TEST";
-            String tableName = "ordertest";
+            String dbName = request.getDatabaseName();
+            String tableName = request.getTableName();
+            String bucket = request.getBucketName();
+            String filename = request.getFileName();
 
-            url += "/"+dbName; // for test
+            // String dbName = "TEST";
+            // String tableName = "ordertest";
+
+            // url += "/"+dbName; // for test
             
             Connection con = DriverManager.getConnection(url,username,password);
             Statement stmt = con.createStatement();
 
             // try {
-            //     stmt.executeUpdate("DROP DATABASE IF EXISTS " + dbName);
+            //     stmt.executeUpdate("DROP DATABASE IF EXISTS TEST");
             // } catch (Exception e) {
             //     logger.log("Failed to drop DB: " + e.getMessage());
             // }
-
             // logger.log(dbName + " Dropped");
 
-            // String sql_createDB = "CREATE DATABASE IF NOT EXISTS " + dbName;
-            // stmt.executeUpdate(sql_createDB);
-            // // stmt.executeUpdate("USE " + dbName);
 
-            // logger.log(dbName + " created");
+            String sql_createDB = "CREATE DATABASE IF NOT EXISTS " + dbName;
+            stmt.executeUpdate(sql_createDB);
+            stmt.executeUpdate("USE " + dbName);
 
-            // url += "/"+dbName;
-            // con = DriverManager.getConnection(url,username,password);
-
+            logger.log("Database "+ dbName +" created");
 
             try {
                 stmt.executeUpdate("DROP TABLE IF EXISTS " + tableName);
@@ -113,7 +113,6 @@ public class HelloMySQL implements RequestHandler<Request, HashMap<String, Objec
             }
 
             logger.log(tableName + " Dropped");
-
 
             String sql_createTable = "CREATE TABLE IF NOT EXISTS `" + tableName + "` ("
                         + "`OrderID` VARCHAR(255) PRIMARY KEY, "
@@ -133,50 +132,28 @@ public class HelloMySQL implements RequestHandler<Request, HashMap<String, Objec
                         + "`OrderProcessingTime` INT, "
                         + "`GrossMargin` DECIMAL(16, 6))";
     
-            
             stmt.executeUpdate(sql_createTable);
             logger.log(tableName + " created");
 
-            // String bucket = request.getBucketName();
-            // String key = request.getFileName();
 
-            String bucket = "transformed-csv";
-            String filename = "transformed-100_Sales_Records.csv";
-
-            
             try {
                 // Get the object from the S3 bucket
                 // S3Object s3Object = s3Client.getObject(bucket, filename);
                 S3Object s3Object = s3Client.getObject(new GetObjectRequest(bucket, filename));
-                logger.log("got s3Object");
-
                 S3ObjectInputStream s3InputStream = s3Object.getObjectContent();
-                logger.log("got s3InputStream");
-
-                // // get object file using bucket name and filename
-                // S3Object s3Object = s3Client.getObject(new GetObjectRequest(bucket, filename));
-                // // get content of the file
-                // InputStream objectData = s3Object.getObjectContent();
 
                 String insertDataQuery = "INSERT INTO "+ tableName +" VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                 PreparedStatement prepStmt = con.prepareStatement(insertDataQuery);
-
-                logger.log("Read CSV Step 1 done");
 
                 // Process the CSV file line by line
                 try (BufferedReader reader = new BufferedReader(new InputStreamReader(s3InputStream, StandardCharsets.UTF_8))) {
 
                     // Skip the first line (header)
                     reader.readLine();
-
                     String line;
-                    logger.log("Read CSV Step 2 done");
-
-                    int lineNum = 1;
                     while ((line = reader.readLine()) != null) {
                         // Process each line of the CSV file
                         String[] fields = line.split(",");
-                        logger.log("split line " + lineNum);
 
                         prepStmt.setString(1, fields[6]); // OrderID (Primary Key)
                         prepStmt.setString(2, fields[0]); // Region
@@ -196,92 +173,54 @@ public class HelloMySQL implements RequestHandler<Request, HashMap<String, Objec
                         prepStmt.setDouble(16, Double.parseDouble(fields[15])); // GrossMargin
                         // Set prepared statement fields based on CSV fields
                         prepStmt.executeUpdate();
-
-                        logger.log("Read CSV line: " + lineNum++);
-
                     }
                 } catch(Exception e) {
                     logger.log("Error reading csv file: " + e.getMessage());
                 }
-
-                // try (Scanner scanner = new Scanner(objectData)) {
-                //     PreparedStatement preparedStatement = con.prepareStatement(insertDataQuery);
-                //     scanner.nextLine(); // Skip the header line
-
-                //     int lineNum = 1;
-                //     while (scanner.hasNext()) {
-                //         String[] fields = scanner.nextLine().split(",");
-                //         preparedStatement.setString(1, fields[6]); // OrderID (Primary Key)
-                //         preparedStatement.setString(2, fields[0]); // Region
-                //         preparedStatement.setString(3, fields[1]); // Country
-                //         preparedStatement.setString(4, fields[2]); // ItemType
-                //         preparedStatement.setString(5, fields[3]); // SalesChannel
-                //         preparedStatement.setString(6, fields[4]); // OrderPriority
-                //         preparedStatement.setString(7, fields[5]); // OrderDate
-                //         preparedStatement.setString(8, fields[7]); // ShipDate
-                //         preparedStatement.setInt(9, Integer.parseInt(fields[8])); // UnitsSold
-                //         preparedStatement.setDouble(10, Double.parseDouble(fields[9])); // UnitPrice
-                //         preparedStatement.setDouble(11, Double.parseDouble(fields[10])); // UnitCost
-                //         preparedStatement.setDouble(12, Double.parseDouble(fields[11])); // TotalRevenue
-                //         preparedStatement.setDouble(13, Double.parseDouble(fields[12])); // TotalCost
-                //         preparedStatement.setDouble(14, Double.parseDouble(fields[13])); // TotalProfit
-                //         preparedStatement.setInt(15, Integer.parseInt(fields[14])); // OrderProcessingTime
-                //         preparedStatement.setDouble(16, Double.parseDouble(fields[15])); // GrossMargin
-                //         // Set prepared statement fields based on CSV fields
-                //         preparedStatement.executeUpdate();
-
-                //         logger.log("Read CSV line: " + lineNum++);
-                //     }
-                // } catch (Exception e) {
-                //     logger.log("Error reading csv file: " + e.getMessage());
-                // }
-
-                // logger.log(" CSV inserted into DB");
-
 
             } catch (Exception e) {
                 logger.log("Error processing S3 object: " + e.getMessage());
             }
 
 
-            // // retrieves only the first 10 rows of table
-            // String selectSql = "SELECT * FROM " + tableName + " LIMIT 10";
-            // try (Statement selectStmt = con.createStatement();
-            //      ResultSet rs = selectStmt.executeQuery(selectSql)) {
+            // retrieves only the first 10 rows of table
+            String selectSql = "SELECT * FROM " + tableName + " LIMIT 10";
+            try (Statement selectStmt = con.createStatement();
+                 ResultSet rs = selectStmt.executeQuery(selectSql)) {
                 
-            //     int row = 1;
+                int row = 1;
             
-            //     while (rs.next()) {
-            //         // Retrieve each column value
-            //         String c1 = rs.getString("OrderID");
-            //         String c2 = rs.getString("Region");
-            //         String c3 = rs.getString("Country");
-            //         String c4 = rs.getString("ItemType");
-            //         String c5 = rs.getString("SalesChannel");
-            //         String c6 = rs.getString("OrderPriority");
-            //         String c7 = rs.getString("OrderDate");
-            //         String c8 = rs.getString("ShipDate");
-            //         int c9 = rs.getInt("UnitsSold");
-            //         double c10 = rs.getDouble("UnitPrice");
-            //         double c11 = rs.getDouble("UnitCost");
-            //         double c12 = rs.getDouble("TotalRevenue");
-            //         double c13 = rs.getDouble("TotalCost");
-            //         double c14 = rs.getDouble("TotalProfit");
-            //         int c15 = rs.getInt("OrderProcessingTime");
-            //         double c16 = rs.getDouble("GrossMargin");
+                while (rs.next()) {
+                    // Retrieve each column value
+                    String c1 = rs.getString("OrderID");
+                    String c2 = rs.getString("Region");
+                    String c3 = rs.getString("Country");
+                    String c4 = rs.getString("ItemType");
+                    String c5 = rs.getString("SalesChannel");
+                    String c6 = rs.getString("OrderPriority");
+                    String c7 = rs.getString("OrderDate");
+                    String c8 = rs.getString("ShipDate");
+                    int c9 = rs.getInt("UnitsSold");
+                    double c10 = rs.getDouble("UnitPrice");
+                    double c11 = rs.getDouble("UnitCost");
+                    double c12 = rs.getDouble("TotalRevenue");
+                    double c13 = rs.getDouble("TotalCost");
+                    double c14 = rs.getDouble("TotalProfit");
+                    int c15 = rs.getInt("OrderProcessingTime");
+                    double c16 = rs.getDouble("GrossMargin");
 
 
-            //         logger.log("Row"+ row +": "+ c1 +", "+ c2 +", "+ c3 +", "+ c4 +", "+ c5 +", "+ 
-            //                 c6 +", "+ c7 +", "+ c8 +", "+ c9 +", "+ c10 +", "+ c11 +", "+ c12 +", "+ 
-            //                 c13 +", "+ c14 +", "+ c15 +", "+ c16);
+                    logger.log("Row"+ row++ +": "+ c1 +", "+ c2 +", "+ c3 +", "+ c4 +", "+ c5 +", "+ 
+                            c6 +", "+ c7 +", "+ c8 +", "+ c9 +", "+ c10 +", "+ c11 +", "+ c12 +", "+ 
+                            c13 +", "+ c14 +", "+ c15 +", "+ c16);
 
-            //     }
-            // } catch (SQLException e) {
-            //     logger.log("SQL Exception while selecting data: " + e.getMessage());
-            // } catch (Exception e) {
-            //     logger.log("Got an exception working with MySQL! ");
-            //     logger.log(e.getMessage());
-            // }
+                }
+            } catch (SQLException e) {
+                logger.log("SQL Exception while selecting data: " + e.getMessage());
+            } catch (Exception e) {
+                logger.log("Got an exception working with MySQL! ");
+                logger.log(e.getMessage());
+            }
 
             con.close();
 
@@ -356,109 +295,109 @@ public class HelloMySQL implements RequestHandler<Request, HashMap<String, Objec
     // }
 
 
-    // int main enables testing function from cmd line
-    public static void main (String[] args)
-    {
-        Context c = new Context() {
-            @Override
-            public String getAwsRequestId() {
-                return "";
-            }
+    // // int main enables testing function from cmd line
+    // public static void main (String[] args)
+    // {
+    //     Context c = new Context() {
+    //         @Override
+    //         public String getAwsRequestId() {
+    //             return "";
+    //         }
 
-            @Override
-            public String getLogGroupName() {
-                return "";
-            }
+    //         @Override
+    //         public String getLogGroupName() {
+    //             return "";
+    //         }
 
-            @Override
-            public String getLogStreamName() {
-                return "";
-            }
+    //         @Override
+    //         public String getLogStreamName() {
+    //             return "";
+    //         }
 
-            @Override
-            public String getFunctionName() {
-                return "";
-            }
+    //         @Override
+    //         public String getFunctionName() {
+    //             return "";
+    //         }
 
-            @Override
-            public String getFunctionVersion() {
-                return "";
-            }
+    //         @Override
+    //         public String getFunctionVersion() {
+    //             return "";
+    //         }
 
-            @Override
-            public String getInvokedFunctionArn() {
-                return "";
-            }
+    //         @Override
+    //         public String getInvokedFunctionArn() {
+    //             return "";
+    //         }
 
-            @Override
-            public CognitoIdentity getIdentity() {
-                return null;
-            }
+    //         @Override
+    //         public CognitoIdentity getIdentity() {
+    //             return null;
+    //         }
 
-            @Override
-            public ClientContext getClientContext() {
-                return null;
-            }
+    //         @Override
+    //         public ClientContext getClientContext() {
+    //             return null;
+    //         }
 
-            @Override
-            public int getRemainingTimeInMillis() {
-                return 0;
-            }
+    //         @Override
+    //         public int getRemainingTimeInMillis() {
+    //             return 0;
+    //         }
 
-            @Override
-            public int getMemoryLimitInMB() {
-                return 0;
-            }
+    //         @Override
+    //         public int getMemoryLimitInMB() {
+    //             return 0;
+    //         }
 
-            @Override
-            public LambdaLogger getLogger() {
-                return new LambdaLogger() {
-                    @Override
-                    public void log(String string) {
-                        System.out.println("LOG:" + string);
-                    }
-                };
-            }
-        };
+    //         @Override
+    //         public LambdaLogger getLogger() {
+    //             return new LambdaLogger() {
+    //                 @Override
+    //                 public void log(String string) {
+    //                     System.out.println("LOG:" + string);
+    //                 }
+    //             };
+    //         }
+    //     };
 
-        // Create an instance of the class
-        HelloMySQL lt = new HelloMySQL();
+    //     // Create an instance of the class
+    //     HelloMySQL lt = new HelloMySQL();
 
-        // Create a request object
-        Request req = new Request();
+    //     // Create a request object
+    //     Request req = new Request();
 
-        // Grab the name from the cmdline from arg 0
-        String name = (args.length > 0 ? args[0] : "");
+    //     // Grab the name from the cmdline from arg 0
+    //     String name = (args.length > 0 ? args[0] : "");
 
-        // Load the name into the request object
-        req.setName(name);
+    //     // Load the name into the request object
+    //     req.setName(name);
 
-        // Report name to stdout
-        System.out.println("cmd-line param name=" + req.getName());
+    //     // Report name to stdout
+    //     System.out.println("cmd-line param name=" + req.getName());
 
-        // Test properties file creation
-        Properties properties = new Properties();
-        properties.setProperty("driver", "com.mysql.cj.jdbc.Driver");
-        properties.setProperty("url","");
-        properties.setProperty("username","");
-        properties.setProperty("password","");
-        try
-        {
-          properties.store(new FileOutputStream("test.properties"),"");
-        }
-        catch (IOException ioe)
-        {
-          System.out.println("error creating properties file.")   ;
-        }
+    //     // Test properties file creation
+    //     Properties properties = new Properties();
+    //     properties.setProperty("driver", "com.mysql.cj.jdbc.Driver");
+    //     properties.setProperty("url","");
+    //     properties.setProperty("username","");
+    //     properties.setProperty("password","");
+    //     try
+    //     {
+    //       properties.store(new FileOutputStream("test.properties"),"");
+    //     }
+    //     catch (IOException ioe)
+    //     {
+    //       System.out.println("error creating properties file.")   ;
+    //     }
 
 
-        // Run the function
-        //Response resp = lt.handleRequest(req, c);
-        System.out.println("The MySQL Serverless can't be called directly without running on the same VPC as the RDS cluster.");
-        Response resp = new Response();
+    //     // Run the function
+    //     //Response resp = lt.handleRequest(req, c);
+    //     System.out.println("The MySQL Serverless can't be called directly without running on the same VPC as the RDS cluster.");
+    //     Response resp = new Response();
 
-        // Print out function result
-        System.out.println("function result:" + resp.toString());
-    }
+    //     // Print out function result
+    //     System.out.println("function result:" + resp.toString());
+    // }
 
 }

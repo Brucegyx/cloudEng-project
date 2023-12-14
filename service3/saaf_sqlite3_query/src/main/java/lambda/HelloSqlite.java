@@ -3,17 +3,34 @@ package lambda;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import saaf.Inspector;
+import saaf.Response;
+
 import com.amazonaws.services.lambda.runtime.ClientContext;
 import com.amazonaws.services.lambda.runtime.CognitoIdentity;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.amazonaws.services.s3.model.GetObjectRequest;
+import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.services.s3.model.S3Object;
+
+
+import org.json.JSONObject;
+import org.json.JSONArray;
 import java.io.File;
+import java.io.IOException;
 import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.HashMap;
 import java.util.UUID;
 
@@ -25,6 +42,7 @@ import java.util.UUID;
  */
 public class HelloSqlite implements RequestHandler<Request, HashMap<String, Object>> {
     static int uses = 0;
+    private static AmazonS3 s3Client = AmazonS3ClientBuilder.standard().build();
     /**
      * Lambda Function Handler
      * 
@@ -43,7 +61,12 @@ public class HelloSqlite implements RequestHandler<Request, HashMap<String, Obje
         
         //****************START FUNCTION IMPLEMENTATION*************************
         //Add custom key/value attribute to SAAF's output. (OPTIONAL)
-        
+        logger.log(request.toString());
+        String dbBucket = request.getDbBucket();
+        String dbFile = request.getDbFile();
+        logger.log("dbBucket=" + dbBucket);
+        logger.log("dbFile=" + dbFile);
+
         //Create and populate a separate response object for function output. (OPTIONAL)
         Response r = new Response();
         
@@ -55,24 +78,50 @@ public class HelloSqlite implements RequestHandler<Request, HashMap<String, Obje
         
         pwd = System.getProperty("user.dir");
         logger.log("pwd=" + pwd);
-        // UNCOMMENT THIS SECTION TO USE SQLITE DB 
-        /* try
-        {
-            // Connection string an in-memory SQLite DB( CHANGE THIS TO A EC2 INSTANCE SQLITE DB)
-            Connection con = DriverManager.getConnection("jdbc:sqlite:"); 
+        //Check if the db file exists in /tmp
+        
+        File db = new File("/tmp/"+dbFile);
+        logger.log(db.getAbsolutePath());
+        if (db.exists() &&  db.isFile()) {
+            logger.log("db file exists in /tmp, using local copy of db file");
+        } else {
+            logger.log("db file does not exist in /tmp, downloading from bucket");
+            try {
+                // download it to /tmp if file exists
+                
+                GetObjectRequest getObjectRequest = new GetObjectRequest(dbBucket, dbFile);
+                s3Client.getObject(getObjectRequest,  db);
+                logger.log("downloaded db file from bucket");
+            } catch (Exception e) {
+                logger.log("db file does not exist in bucket, exception: "  + e.toString());
+                r.setValue("db file does not exist in bucket");
+                inspector.consumeResponse(r);
+                return inspector.finish();
+            }
+        }
+        // Check if the required db file is in the dbBucket
+        
+        
+        // if not, return error message
 
+        // UNCOMMENT THIS SECTION TO USE SQLITE DB 
+        try
+        {
             // Connection string for a file-based SQlite DB
-            //Connection con = DriverManager.getConnection("jdbc:sqlite:/tmp/mytest.db");
+            Connection con = DriverManager.getConnection("jdbc:sqlite:/tmp/" + dbFile);
 
             // Detect if the table 'mytable' exists in the database
-            PreparedStatement ps = con.prepareStatement("SELECT name FROM sqlite_master WHERE type='table' AND name='mytable'");
+            PreparedStatement ps = con.prepareStatement("SELECT name FROM sqlite_master WHERE type='table' AND name='orders'");
             ResultSet rs = ps.executeQuery();
             if (!rs.next())
             {
-                // 'mytable' does not exist, and should be created
-                logger.log("trying to create table 'mytable'");
-                ps = con.prepareStatement("CREATE TABLE mytable ( name text, col2 text, col3 text);");
-                ps.execute();
+                // 'mytable' does not exist, error must happen in Service 2
+                logger.log("no table found, error must happen in Service 2");
+                r.setValue("no table found, error must happen in Service 2");
+                rs.close();
+                con.close();
+                inspector.consumeResponse(r);
+                return inspector.finish();
             }
             rs.close();
 
@@ -81,9 +130,37 @@ public class HelloSqlite implements RequestHandler<Request, HashMap<String, Obje
 
             // Query mytable to obtain full resultset
             // perform client query 
-            ps = con.prepareStatement("select * from mytable;");
+            String filter = request.getFilter();
+            String aggregation = request.getAggregation();
+            String query = "";
+            if (filter == null || filter.equals("") || filter.equals("*")) {
+                query = "SELECT " + aggregation + " FROM orders";
+            } else { 
+                query = "SELECT " + aggregation + " FROM orders WHERE " + filter;
+            }
+            ps = con.prepareStatement(query);
             rs = ps.executeQuery();
+            ResultSetMetaData rsmd = rs.getMetaData();
+            int columnsNumber = rsmd.getColumnCount();
+            List<String> columnNames = new ArrayList<String>();
+            for (int i = 1; i <= columnsNumber; i++) {
+                columnNames.add(rsmd.getColumnName(i));
+            }
+            JSONArray result = new JSONArray();
+            while (rs.next()) {
+                JSONObject obj = new JSONObject();
+                for ( String column : columnNames) {
+                    try {
 
+                        obj.put(column, rs.getString(column));
+                    } catch (SQLException e) {
+                        e.printStackTrace();
+                    }
+                }
+                
+                result.put(obj);
+            }
+            /* 
             // Load query results for [name] column into a Java Linked List
             // ignore [col2] and [col3] 
             LinkedList<String> ll = new LinkedList<String>();
@@ -93,11 +170,11 @@ public class HelloSqlite implements RequestHandler<Request, HashMap<String, Obje
                 ll.add(rs.getString("name"));
                 logger.log("col2=" + rs.getString("col2"));
                 logger.log("col3=" + rs.getString("col3"));
-            }
+            }*/
             rs.close();
             con.close();  
-
-            r.setNames(ll); // we may not need return all names, since client queries are not select all
+            System.out.println("result=" + result.toString());
+            r.setValue(result.toString()); // set the array of JSON objects as the query result in the response
             
             // sleep to ensure that concurrent calls obtain separate Lambdas
             try
@@ -113,8 +190,8 @@ public class HelloSqlite implements RequestHandler<Request, HashMap<String, Obje
         {
             logger.log("DB ERROR:" + sqle.toString());
             sqle.printStackTrace();
-        } */
-
+        }
+        /* 
         // *********************************************************************
         // Set hello message here
         // *********************************************************************
@@ -128,7 +205,7 @@ public class HelloSqlite implements RequestHandler<Request, HashMap<String, Obje
         names.add("name1");
         r.setNames(names);
         // Test code for this to work -----------------
-        
+        */
         inspector.consumeResponse(r);
         
         //****************END FUNCTION IMPLEMENTATION***************************
@@ -137,7 +214,6 @@ public class HelloSqlite implements RequestHandler<Request, HashMap<String, Obje
         //inspector.inspectAllDeltas();
         return inspector.finish();
     }
-    
     public static boolean setCurrentDirectory(String directory_name)
     {
         boolean result = false;  // Boolean indicating whether directory was set

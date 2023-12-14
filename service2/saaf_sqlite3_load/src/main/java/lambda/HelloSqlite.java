@@ -82,7 +82,7 @@ public class HelloSqlite implements RequestHandler<Request, HashMap<String, Obje
 
         logger.log("Exporting SQLite database to bucket: " + outputBucketName + ", filename: " + outputFileName);
 
-        // Create and populate a response object
+        //Create and populate a response object
         Response r = new Response(); 
         r.setValue("Status:Success exported:" + outputBucketName + "filename:" + outputFileName);
         
@@ -122,6 +122,8 @@ public class HelloSqlite implements RequestHandler<Request, HashMap<String, Obje
      */
     private void loadCsvDataIntoDatabase(File csvFile, File sqliteFile, LambdaLogger logger) {
         try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + sqliteFile.getAbsolutePath())) {
+            String dropTableQuery = "DROP TABLE IF EXISTS orders";
+            connection.createStatement().executeUpdate(dropTableQuery);
             String createTableQuery = "CREATE TABLE IF NOT EXISTS orders ("
                     + "OrderID INTEGER PRIMARY KEY, "
                     + "Region TEXT, "

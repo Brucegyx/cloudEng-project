@@ -20,6 +20,20 @@ public class Response extends saaf.Response {
     // ADD getters and setters for custom attributes here.
     //
 
+    private String status;
+    public String getStatus(){
+        return status;
+    }
+    public void setStatus(String status) {
+        this.status = status;
+    }
+    private String message;
+    public String getMessage(){
+        return message;
+    }
+    public void setMessage(String message) {
+        this.message = message;
+    }
     // Return value
     private String value;
     public String getValue()

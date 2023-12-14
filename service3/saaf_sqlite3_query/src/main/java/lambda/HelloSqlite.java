@@ -57,7 +57,7 @@ public class HelloSqlite implements RequestHandler<Request, HashMap<String, Obje
         
         //Collect inital data.
         Inspector inspector = new Inspector();
-        //inspector.inspectAll();
+        inspector.inspectAll();
         
         //****************START FUNCTION IMPLEMENTATION*************************
         //Add custom key/value attribute to SAAF's output. (OPTIONAL)
@@ -211,7 +211,7 @@ public class HelloSqlite implements RequestHandler<Request, HashMap<String, Obje
         //****************END FUNCTION IMPLEMENTATION***************************
         
         //Collect final information such as total runtime and cpu deltas.
-        //inspector.inspectAllDeltas();
+        inspector.inspectAllDeltas();
         return inspector.finish();
     }
     public static boolean setCurrentDirectory(String directory_name)

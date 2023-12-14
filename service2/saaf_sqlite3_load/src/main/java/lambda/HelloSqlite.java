@@ -28,6 +28,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Scanner;
 import java.util.HashMap;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -52,7 +53,7 @@ public class HelloSqlite implements RequestHandler<Request, HashMap<String, Obje
         LambdaLogger logger = context.getLogger();
         //Collect inital data.
         Inspector inspector = new Inspector();
-        //inspector.inspectAll();
+        inspector.inspectAll();
 
         String bucketName = request.getOutputBucketName();
         String fileName = request.getTransformedFileName();
@@ -81,13 +82,18 @@ public class HelloSqlite implements RequestHandler<Request, HashMap<String, Obje
         logger.log("Exporting SQLite database to bucket: " + outputBucketName + ", filename: " + outputFileName);
 
         // Create and populate a response object
-        HashMap<String, Object> response = new HashMap<>();
-        response.put("status", "success");
-        response.put("message", "SQLite database exported to bucket: " + outputBucketName + ", filename: " + outputFileName);
-        // inspector.consumeResponse(response);
+        Response r = new Response(); 
+        r.setStatus("success");
+        r.setMessage("SQLite database exported to bucket: " + outputBucketName + ", filename: " + outputFileName);
+        
+//        HashMap<String, Object> response = new HashMap<>();
+//        response.put("status", "success");
+//        response.put("message", "SQLite database exported to bucket: " + outputBucketName + ", filename: " + outputFileName);
+        inspector.consumeResponse(r);
 
-        inspector.finish();
-        return response;
+        inspector.inspectAllDeltas();
+        return inspector.finish();
+        //return response;
         
     }
 

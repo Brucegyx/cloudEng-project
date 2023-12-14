@@ -1,11 +1,17 @@
 package lambda;
 
-
+import com.amazonaws.services.sqs.AmazonSQS;
+import com.amazonaws.services.sqs.AmazonSQSClientBuilder;
+import com.amazonaws.services.sqs.model.SendMessageRequest;
 import com.amazonaws.services.lambda.runtime.ClientContext;
 import com.amazonaws.services.lambda.runtime.CognitoIdentity;
 import com.amazonaws.services.lambda.runtime.Context; 
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
+
+import org.json.JSONObject;
+import org.json.JSONArray;
+
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -14,9 +20,14 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Properties;
 import saaf.Inspector;
+
+import java.util.ArrayList;
 import java.util.HashMap;
 
 /**
@@ -49,8 +60,7 @@ public class HelloMySQL implements RequestHandler<Request, HashMap<String, Objec
         //Create and populate a separate response object for function output. (OPTIONAL)
         Response r = new Response();
 
-        try 
-        {
+        try {
             Properties properties = new Properties();
             properties.load(new FileInputStream("db.properties"));
             
@@ -58,33 +68,70 @@ public class HelloMySQL implements RequestHandler<Request, HashMap<String, Objec
             String username = properties.getProperty("username");
             String password = properties.getProperty("password");
             String driver = properties.getProperty("driver");
+
+            String dbName = request.getDatabaseName();
+            String tableName = request.getTableName();
+            String bucket = request.getBucketName();
+            String filename = request.getFileName();
             
             r.setValue(request.getName());
-            // Manually loading the JDBC Driver is commented out
-            // No longer required since JDBC 4
-            //Class.forName(driver);
+
             Connection con = DriverManager.getConnection(url,username,password);
-            
-            PreparedStatement ps = con.prepareStatement("insert into mytable values('" + request.getName() + "','b','c');");
-            ps.execute();
-            ps = con.prepareStatement("select * from mytable;");
-            ResultSet rs = ps.executeQuery();
-            LinkedList<String> ll = new LinkedList<String>();
-            while (rs.next())
-            {
-                logger.log("name=" + rs.getString("name"));
-                ll.add(rs.getString("name"));
-                logger.log("col2=" + rs.getString("col2"));
-                logger.log("col3=" + rs.getString("col3"));
+
+            if (invalidDatabaseOrTable(con, dbName, tableName)) {
+                throw new Exception("Database "+ dbName + " or "+ tableName +" does not exist");
             }
+            Statement stmt = con.createStatement();
+            stmt.executeUpdate("USE " + dbName);
+
+            // perform client query 
+            String filter = request.getFilter();
+            String aggregation = request.getAggregation();
+            String query = "";
+            if (filter == null || filter.equals("") || filter.equals("*")) {
+                query = "SELECT " + aggregation + " FROM orders";
+            } else { 
+                query = "SELECT " + aggregation + " FROM orders WHERE " + filter;
+            }
+            PreparedStatement ps = con.prepareStatement(query);
+            ResultSet rs = ps.executeQuery();
+            ResultSetMetaData rsmd = rs.getMetaData();
+            int columnsNumber = rsmd.getColumnCount();
+            List<String> columnNames = new ArrayList<String>();
+            for (int i = 1; i <= columnsNumber; i++) {
+                columnNames.add(rsmd.getColumnName(i));
+            }
+            JSONArray result = new JSONArray();
+            while (rs.next()) {
+                JSONObject obj = new JSONObject();
+                for (String column : columnNames) {
+                    try {
+                        obj.put(column, rs.getString(column));
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+                
+                result.put(obj);
+            }
+
+            logger.log("result=" + result.toString());
             rs.close();
+            // set the array of JSON objects as the query result in the response
+            r.setValue(result.toString()); 
+            
+            // sleep to ensure that concurrent calls obtain separate Lambdas
+            try {Thread.sleep(200);}
+            catch (InterruptedException ie) {
+                logger.log("interrupted while sleeping...");
+            }
+
+        } catch (SQLException sqle) {
+            logger.log("MySQL exception: " + sqle.getMessage());
+        } catch (Exception e) {
+            logger.log("General exception :" + e.getMessage());
+        } finally {
             con.close();
-            r.setNames(ll);
-        } 
-        catch (Exception e) 
-        {
-            logger.log("Got an exception working with MySQL! ");
-            logger.log(e.getMessage());
         }
 
         //Print log information to the Lambda log as needed
@@ -99,110 +146,34 @@ public class HelloMySQL implements RequestHandler<Request, HashMap<String, Objec
         return inspector.finish();
     }
 
+    /** returns TRUE is the database OR table DOES NOT exist */
+    private boolean invalidDatabaseOrTable(Connection con, String dbName, String tableName) {
+        boolean databaseExists = false;
+        boolean tableExists = false;
 
-    // int main enables testing function from cmd line
-    public static void main (String[] args)
-    {
-        Context c = new Context() {
-            @Override
-            public String getAwsRequestId() {
-                return "";
-            }
+        Statement stmt = con.createStatement();
+        String sqlDB = "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '" + dbName + "'";
+        ResultSet rs = stmt.executeQuery(sqlDB);
+        if (rs.next()) databaseExists = true;
+        rs.close();
 
-            @Override
-            public String getLogGroupName() {
-                return "";
-            }
-
-            @Override
-            public String getLogStreamName() {
-                return "";
-            }
-
-            @Override
-            public String getFunctionName() {
-                return "";
-            }
-
-            @Override
-            public String getFunctionVersion() {
-                return "";
-            }
-
-            @Override
-            public String getInvokedFunctionArn() {
-                return "";
-            }
-
-            @Override
-            public CognitoIdentity getIdentity() {
-                return null;
-            }
-
-            @Override
-            public ClientContext getClientContext() {
-                return null;
-            }
-
-            @Override
-            public int getRemainingTimeInMillis() {
-                return 0;
-            }
-
-            @Override
-            public int getMemoryLimitInMB() {
-                return 0;
-            }
-
-            @Override
-            public LambdaLogger getLogger() {
-                return new LambdaLogger() {
-                    @Override
-                    public void log(String string) {
-                        System.out.println("LOG:" + string);
-                    }
-                };
-            }
-        };
-
-        // Create an instance of the class
-        HelloMySQL lt = new HelloMySQL();
-
-        // Create a request object
-        Request req = new Request();
-
-        // Grab the name from the cmdline from arg 0
-        String name = (args.length > 0 ? args[0] : "");
-
-        // Load the name into the request object
-        req.setName(name);
-
-        // Report name to stdout
-        System.out.println("cmd-line param name=" + req.getName());
-
-        // Test properties file creation
-        Properties properties = new Properties();
-        properties.setProperty("driver", "com.mysql.cj.jdbc.Driver");
-        properties.setProperty("url","");
-        properties.setProperty("username","");
-        properties.setProperty("password","");
-        try
-        {
-          properties.store(new FileOutputStream("test.properties"),"");
-        }
-        catch (IOException ioe)
-        {
-          System.out.println("error creating properties file.")   ;
+        if (!databaseExists) {
+            logger.log("Database "+ dbName +" DOES NOT EXIST! ");
+            return true;
         }
 
+        stmt = con.createStatement();
+        String sqlTable = "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '"+ dbName +"' AND TABLE_NAME = '" + tableName + "'";
+        rs = stmt.executeQuery(sqlDB);
+        if (rs.next()) tableExists = true;
+        rs.close();
 
-        // Run the function
-        //Response resp = lt.handleRequest(req, c);
-        System.out.println("The MySQL Serverless can't be called directly without running on the same VPC as the RDS cluster.");
-        Response resp = new Response();
+        if (!databaseExists) {
+            logger.log("Table "+ tableName +" DOES NOT EXIST! ");
+            return true;
+        }
+        else return false;
 
-        // Print out function result
-        System.out.println("function result:" + resp.toString());
     }
 
 }

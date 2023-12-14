@@ -3,6 +3,7 @@ package lambda;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import saaf.Inspector;
+import saaf.Response;
 import com.amazonaws.services.lambda.runtime.ClientContext;
 import com.amazonaws.services.lambda.runtime.CognitoIdentity;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
@@ -52,7 +53,7 @@ public class HelloSqlite implements RequestHandler<Request, HashMap<String, Obje
         LambdaLogger logger = context.getLogger();
         //Collect inital data.
         Inspector inspector = new Inspector();
-        //inspector.inspectAll();
+        inspector.inspectAll();
 
         String bucketName = request.getOutputBucketName();
         String fileName = request.getTransformedFileName();
@@ -84,10 +85,11 @@ public class HelloSqlite implements RequestHandler<Request, HashMap<String, Obje
         HashMap<String, Object> response = new HashMap<>();
         response.put("status", "success");
         response.put("message", "SQLite database exported to bucket: " + outputBucketName + ", filename: " + outputFileName);
-        // inspector.consumeResponse(response);
+        inspector.consumeResponse(response);
 
-        inspector.finish();
-        return response;
+        inspector.inspectAllDeltas();
+        return inspector.finish();
+        //return response;
         
     }
 

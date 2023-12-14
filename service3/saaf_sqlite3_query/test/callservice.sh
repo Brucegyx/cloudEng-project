@@ -1,21 +1,14 @@
 #!/bin/bash
 
-# JSON object to pass to Lambda Function
-json={"\"name\"":"\"Susan\u0020Smith\",\"param1\"":1,\"param2\"":2,\"param3\"":3}
+#### calling service 3 ######
+filenameWithoutSuffix=${1%.csv}   # remove suffix from filename
+dbFile="transformed-$filenameWithoutSuffix.db"
+echo $dbFile
+json={"\"dbBucket\"":"\"sqlite-db562\"","\"dbFile\"":"\"$dbFile\"","\"aggregation\"":"\"AVG(GrossMargin) \"","\"filter\"":"\"\""}
+echo "Invoking Service 3 using API Gateway"
+echo $json | jq
+#time output=`curl -s -H "Content-Type: application/json" -X POST -d "$json" https://db4m5x9c3a.execute-api.us-east-2.amazonaws.com/query`
+time output=`aws lambda invoke --invocation-type RequestResponse --function-name Service3 --region us-east-2 --payload "$json" /dev/stdout | head -n 1 | head -c -2 ; echo`
 
-#echo "Invoking Lambda function using API Gateway"
-#time output=`curl -s -H "Content-Type: application/json" -X POST -d $json {API-GATEWAY-REST-URL}`
-#echo ""
-
-#echo ""
-#echo "JSON RESULT:"
-#echo $output | jq
-#echo ""
-
-echo "Invoking Lambda function using AWS CLI"
-time output=`aws lambda invoke --invocation-type RequestResponse --function-name helloSqlite --region us-east-2 --payload $json /dev/stdout | head -n 1 | head -c -2 ; echo`
-
-echo ""
-echo "JSON RESULT:"
+echo "Service 3 JSON RESULT:"
 echo $output | jq
-echo ""

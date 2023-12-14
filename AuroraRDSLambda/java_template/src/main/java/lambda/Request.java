@@ -7,9 +7,8 @@ package lambda;
 public class Request {
 
     private String bucketName;
-    private String objectKey;
+    private String fileName;
 
-    // Getters and setters
     public String getBucketName() {
         return bucketName;
     }
@@ -18,15 +17,18 @@ public class Request {
         this.bucketName = bucketName;
     }
 
-    public String getObjectKey() {
-        return objectKey;
+    public String getFileName() {
+        return fileName;
     }
 
-    public void setObjectKey(String objectKey) {
-        this.objectKey = objectKey;
+    public void setFileName(String filename) {
+        this.fileName = filename;
     }
 
     
+
+
+    // ************* OLD ************************
     String name;
 
     public String getName() {

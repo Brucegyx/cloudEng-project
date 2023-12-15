@@ -14,7 +14,7 @@ json={"\"databaseName\"":"\"MAIN\"","\"tableName\"":"\"orders100\"","\"aggregati
 
 echo "Invoking Lambda function using AWS CLI"
 #time output=`aws lambda invoke --invocation-type RequestResponse --function-name {LAMBDA-FUNCTION-NAME} --region us-east-2 --payload $json /dev/stdout | head -n 1 | head -c -2 ; echo`
-time output=`aws lambda invoke --invocation-type RequestResponse --function-name hellomysqlf21 --region us-east-2 --payload $json /dev/stdout | head -n 1 | head -c -2 ; echo`
+time output=`aws lambda invoke --invocation-type RequestResponse --function-name service3_aurora --region us-east-2 --payload $json /dev/stdout | head -n 1 | head -c -2 ; echo`
 
 echo ""
 echo "JSON RESULT:"

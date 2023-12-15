@@ -19,6 +19,7 @@ import java.nio.charset.Charset;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
+import java.sql.Statement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -73,12 +74,11 @@ public class HelloMySQL implements RequestHandler<Request, HashMap<String, Objec
             String tableName = request.getTableName();
             String filter = request.getFilter();
             String aggregation = request.getAggregation();
-            
-            r.setValue(request.getName());
 
             Connection con = DriverManager.getConnection(url,username,password);
 
-            if (invalidDatabaseOrTable(con, dbName, tableName)) {
+            if (invalidDatabaseOrTable(con, logger, dbName, tableName)) {
+                con.close();
                 throw new Exception("Database "+ dbName +" or "+ tableName +" does not exist");
             }
             Statement stmt = con.createStatement();
@@ -87,9 +87,9 @@ public class HelloMySQL implements RequestHandler<Request, HashMap<String, Objec
             // perform client query 
             String query = "";
             if (filter == null || filter.equals("") || filter.equals("*")) {
-                query = "SELECT " + aggregation + " FROM orders";
+                query = "SELECT "+ aggregation +" FROM "+ tableName;
             } else { 
-                query = "SELECT " + aggregation + " FROM orders WHERE " + filter;
+                query = "SELECT "+ aggregation +" FROM "+ tableName +" WHERE "+ filter;
             }
             PreparedStatement ps = con.prepareStatement(query);
             ResultSet rs = ps.executeQuery();
@@ -114,6 +114,7 @@ public class HelloMySQL implements RequestHandler<Request, HashMap<String, Objec
             }
 
             logger.log("result=" + result.toString());
+            con.close();
             rs.close();
             // set the array of JSON objects as the query result in the response
             r.setValue(result.toString()); 
@@ -128,8 +129,6 @@ public class HelloMySQL implements RequestHandler<Request, HashMap<String, Objec
             logger.log("MySQL exception: " + sqle.getMessage());
         } catch (Exception e) {
             logger.log("General exception :" + e.getMessage());
-        } finally {
-            con.close();
         }
 
         //Print log information to the Lambda log as needed
@@ -145,33 +144,37 @@ public class HelloMySQL implements RequestHandler<Request, HashMap<String, Objec
     }
 
     /** returns TRUE if the database or table DOES NOT exist */
-    private boolean invalidDatabaseOrTable(Connection con, String dbName, String tableName) {
-        boolean databaseExists = false;
-        boolean tableExists = false;
+    private boolean invalidDatabaseOrTable(Connection con, LambdaLogger logger, String dbName, String tableName) {
+        try {
+            boolean databaseExists = false;
+            boolean tableExists = false;
 
-        Statement stmt = con.createStatement();
-        String sqlDB = "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '" + dbName + "'";
-        ResultSet rs = stmt.executeQuery(sqlDB);
-        if (rs.next()) databaseExists = true;
-        rs.close();
+            Statement stmt = con.createStatement();
+            String sqlDB = "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '" + dbName + "'";
+            ResultSet rs = stmt.executeQuery(sqlDB);
+            if (rs.next()) databaseExists = true;
+            rs.close();
 
-        if (!databaseExists) {
-            logger.log("Database "+ dbName +" DOES NOT EXIST! ");
-            return true;
-        }
+            if (!databaseExists) {
+                logger.log("Database "+ dbName +" DOES NOT EXIST! ");
+                return true;
+            }
 
-        stmt = con.createStatement();
-        String sqlTable = "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '"+ dbName +"' AND TABLE_NAME = '" + tableName + "'";
-        rs = stmt.executeQuery(sqlDB);
-        if (rs.next()) tableExists = true;
-        rs.close();
+            stmt = con.createStatement();
+            String sqlTable = "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '"+ dbName +"' AND TABLE_NAME = '" + tableName + "'";
+            rs = stmt.executeQuery(sqlDB);
+            if (rs.next()) tableExists = true;
+            rs.close();
 
-        if (!databaseExists) {
-            logger.log("Table "+ tableName +" DOES NOT EXIST! ");
-            return true;
-        }
-        else return false;
+            if (!tableExists) {
+                logger.log("Table "+ tableName +" DOES NOT EXIST! ");
+                return true;
+            }
+        } catch (SQLException sqle) {
+            logger.log("MySQL exception: " + sqle.getMessage());
+        } 
 
+        return false;
     }
 
 }

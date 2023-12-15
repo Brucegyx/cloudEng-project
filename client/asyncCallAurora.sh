@@ -19,22 +19,20 @@ jsonOrig={"\"bucketname\"":\"test.bucket.462562f23.yx\"","\"filename\"":\"$1\"",
 json={"\"bucketname\"":\"test.bucket.462562f23.yx\"","\"filename\"":\"$1\"","\"aggregation\"":"\"$aggregation\"","\"filter\"":"\"$filter\"","\"databaseName\"":"\"$databaseName\"","\"tableName\"":"\"$tableName\""}
 
 echo "Invoking service 1 asynchronously using API Gateway"
-echo $json
 time output=`curl -s -H "Content-Type: application/json" -X POST -d "$json" https://hd6v6ispw2.execute-api.us-east-2.amazonaws.com/AuroraAsync/` 
 
-
-# echo "async service1 call:"
-# echo $output | jq
-# resultFile=${aggregation}_${filter}_"asyncResult.json"
-# echo $resultFile
-# # check periodically if the result file exists, NOTICE: this may return immediately if the same query has been executed before
-# if $(aws s3api wait object-exists --bucket 562project-query-async --key "$resultFile")
-# then
-#     echo "Result file exists"
-#     # copy the json file back to the client, this could costs time so we can only check if the result exists
+echo "async service1 call:"
+echo $output | jq
+resultFile=${aggregation}_${filter}_"asyncRDSResult.json"
+echo $resultFile
+# check periodically if the result file exists, NOTICE: this may return immediately if the same query has been executed before
+if $(aws s3api wait object-exists --bucket 562project-query-async --key "$resultFile")
+then
+    echo "Result file exists"
+    # copy the json file back to the client, this could costs time so we can only check if the result exists
 #     aws s3 cp "s3://562project-query-async/$resultFile" "./async_results_$resultFile"
-#     echo "Results copied"
-#     echo $resultFile | jq -r '.[]'
-# else
-#     echo "Result file does not exist"
-# fi
+    echo "Results copied"
+    echo $resultFile | jq -r '.[]'
+else
+    echo "Result file does not exist"
+fi

@@ -59,6 +59,7 @@ public class ProcessCSV implements RequestHandler<Request, HashMap<String, Objec
         inspector.inspectAll();
         //lambda logger
         LambdaLogger logger = context.getLogger();
+        logger.log("received : " + request.toString());
         //****************START FUNCTION IMPLEMENTATION*************************
         //Add custom key/value attribute to SAAF's output. (OPTIONAL)
         // select csv file from s3 based on bucketname and filename

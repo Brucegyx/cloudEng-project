@@ -9,7 +9,9 @@ import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.events.SQSEvent;
-
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.amazonaws.services.s3.model.GetObjectRequest;
 import org.json.JSONObject;
 import org.json.JSONArray;
 import com.google.gson.*;
@@ -40,6 +42,7 @@ import java.util.HashMap;
  * @author Robert Cordingly
  */
 public class HelloMySQL implements RequestHandler<SQSEvent, HashMap<String, Object>> {
+    private static AmazonS3 s3Client = AmazonS3ClientBuilder.standard().build();
 
     /**
      * Lambda Function Handler
@@ -127,7 +130,10 @@ public class HelloMySQL implements RequestHandler<SQSEvent, HashMap<String, Obje
                 rs.close();
                 // set the array of JSON objects as the query result in the response
                 r.setValue(result.toString()); 
-                
+                String resultFilename = aggregation+"_"+filter+"_asyncRDSResult.json";
+                    
+                s3Client.putObject("562project-query-async", resultFilename, result.toString());
+
                 // sleep to ensure that concurrent calls obtain separate Lambdas
                 try {Thread.sleep(200);}
                 catch (InterruptedException ie) {
@@ -136,6 +142,7 @@ public class HelloMySQL implements RequestHandler<SQSEvent, HashMap<String, Obje
                 inspector.consumeResponse(r);
             }
             con.close();
+
         } catch (SQLException sqle) {
             logger.log("MySQL exception: " + sqle.getMessage());
         } catch (Exception e) {

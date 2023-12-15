@@ -75,6 +75,17 @@ public class Request {
     public void setTableName(String tableName) {
         this.tableName = tableName;
     }
+    public Request (String bucketname, String filename, String aggregation, String filter, String databaseName, String tableName) {
+        this.bucketname = bucketname;
+        this.filename = filename;
+        this.aggregation = aggregation;
+        this.filter = filter;
+        this.databaseName = databaseName;
+        this.tableName = tableName;
+    }
+    public Request() {
+        
+    }
 
     
 }

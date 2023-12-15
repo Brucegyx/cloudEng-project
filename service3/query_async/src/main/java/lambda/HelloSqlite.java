@@ -156,8 +156,9 @@ public class HelloSqlite implements RequestHandler<SQSEvent, HashMap<String, Obj
                     }
   
                     rs.close();
-                    con.close();  
-                    String resultFilename = aggregation+"_"+filter+"_asyncResult.json";
+                    con.close(); 
+                    String inputFileWithoutSuffix = dbFile.substring(0, dbFile.lastIndexOf('.')); 
+                    String resultFilename = inputFileWithoutSuffix+"_"+aggregation+"_"+filter+"_asyncResult.json";
                     
                     r.setValue(result.toString()); // set the array of JSON objects as the query result in the response
                     s3Client.putObject("562project-query-async", resultFilename, result.toString());

@@ -47,7 +47,8 @@ public class HelloSqlite implements RequestHandler<SQSEvent, HashMap<String, Obj
         
         //Collect inital data.
         Inspector inspector = new Inspector();
-        //inspector.inspectAll();
+        
+        inspector.inspectAll();
         
         //****************START FUNCTION IMPLEMENTATION*************************
         //Add custom key/value attribute to SAAF's output. (OPTIONAL)
@@ -181,7 +182,8 @@ public class HelloSqlite implements RequestHandler<SQSEvent, HashMap<String, Obj
             //****************END FUNCTION IMPLEMENTATION***************************
             
             //Collect final information such as total runtime and cpu deltas.
-            //inspector.inspectAllDeltas();
+            inspector.inspectAllDeltas();
+            logger.log(inspector.finish().toString());
             return inspector.finish();
 
         } catch (Exception e) {
@@ -189,6 +191,8 @@ public class HelloSqlite implements RequestHandler<SQSEvent, HashMap<String, Obj
             e.printStackTrace();
             
         }
+        inspector.inspectAllDeltas();
+        logger.log(inspector.finish().toString());
         return inspector.finish();
        
     }

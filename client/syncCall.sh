@@ -38,10 +38,8 @@ json={"\"outputBucketName\"":\"transformed-csv\"","\"transformedFileName\"":\"$t
 
 echo "Invoking Service 2 using API Gateway"
 time output=`curl -s -H "Content-Type: application/json" -X POST -d $json https://v8le7b4h00.execute-api.us-east-2.amazonaws.com/Load`
-echo ""
 
-echo ""
-echo "JSON RESULT:"
+echo "Service 2 JSON RESULT:"
 echo $output | jq
 echo ""
 

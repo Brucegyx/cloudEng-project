@@ -32,6 +32,8 @@ import lambda.SqsMessages;
 public class LoadAsync implements RequestHandler<SQSEvent, HashMap<String, Object>> {
     private static AmazonS3 s3Client = AmazonS3ClientBuilder.standard().build();
     public HashMap<String, Object> handleRequest(SQSEvent sqsevent, Context context) {
+        Inspector inspector = new Inspector();
+        inspector.inspectAll();
         // Create logger
         LambdaLogger logger = context.getLogger();
         HashMap<String,Object> response = new HashMap<String, Object>();
@@ -85,6 +87,9 @@ public class LoadAsync implements RequestHandler<SQSEvent, HashMap<String, Objec
         } catch (Exception e) {
             logger.log("Exception: " + e);
         }
+        
+        inspector.inspectAllDeltas();
+        logger.log("Service2 SQS: " + inspector.finish().toString());
         return response;
     }
      /*

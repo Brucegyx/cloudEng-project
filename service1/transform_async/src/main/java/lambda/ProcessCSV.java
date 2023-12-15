@@ -56,6 +56,7 @@ public class ProcessCSV implements RequestHandler<Request, HashMap<String, Objec
         
         //Collect inital data.
         Inspector inspector = new Inspector();
+        inspector.inspectAll();
         //lambda logger
         LambdaLogger logger = context.getLogger();
         //****************START FUNCTION IMPLEMENTATION*************************
@@ -177,6 +178,8 @@ public class ProcessCSV implements RequestHandler<Request, HashMap<String, Objec
         //****************END FUNCTION IMPLEMENTATION***************************
         
         //Collect final information such as total runtime and cpu deltas.
+        inspector.inspectAllDeltas();
+        logger.log("Service1 SQS: " + inspector.finish().toString());
         return inspector.finish();
     }
 }

@@ -5,6 +5,7 @@ import com.amazonaws.services.lambda.runtime.CognitoIdentity;
 import com.amazonaws.services.lambda.runtime.Context; 
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
+import com.amazonaws.services.lambda.runtime.events.SQSEvent;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.event.S3EventNotification.S3EventNotificationRecord;
@@ -18,7 +19,9 @@ import com.amazonaws.services.sqs.AmazonSQS;
 import com.amazonaws.services.sqs.AmazonSQSClientBuilder;
 import com.amazonaws.services.sqs.model.SendMessageRequest;
 
+import lambda.SqsMessages;
 import com.google.gson.*;
+import saaf.Inspector;
 
 import java.io.BufferedReader;
 import java.io.FileInputStream;
@@ -37,9 +40,9 @@ import java.sql.SQLException;
 import java.util.LinkedList;
 import java.util.Properties;
 import java.util.Scanner;
-
-import saaf.Inspector;
 import java.util.HashMap;
+
+
 
 
 /**
@@ -70,6 +73,13 @@ public class HelloMySQL implements RequestHandler<SQSEvent, HashMap<String, Obje
         HashMap<String,Object> response = new HashMap<String, Object>();
 
         try {
+            String url = properties.getProperty("url");
+            String username = properties.getProperty("username");
+            String password = properties.getProperty("password");
+            String driver = properties.getProperty("driver");
+
+            Connection con = DriverManager.getConnection(url,username,password);
+
             for (SQSEvent.SQSMessage msg : sqsevent.getRecords()) {
                 String body = msg.getBody();
                 logger.log("msg from service 1: " + body);
@@ -83,25 +93,21 @@ public class HelloMySQL implements RequestHandler<SQSEvent, HashMap<String, Obje
                     Properties properties = new Properties();
                     properties.load(new FileInputStream("db.properties"));
                     
-                    String url = properties.getProperty("url");
-                    String username = properties.getProperty("username");
-                    String password = properties.getProperty("password");
-                    String driver = properties.getProperty("driver");
+                    // String dbName = request.getDatabaseName();
+                    // String tableName = request.getTableName();
+                    // String bucket = request.getBucketName();
+                    // String filename = request.getFileName();
 
-                    String dbName = request.getDatabaseName();
-                    String tableName = request.getTableName();
-                    String bucket = request.getBucketName();
-                    String filename = request.getFileName();
+                    String dbName = "MAIN";
+                    String tableName = "async";
+                    String bucket = sqsMessages.getTransformedBucketName();
+                    String filename = sqsMessages.getTransformedFileName();
+                    String filter = sqsMessages.getFilter();
+                    String aggregation = sqsMessages.getAggregation();
 
-
-                    // String dbName = "TEST";
-                    // String tableName = "ordertest";
-
-                    // url += "/"+dbName; // for test
-                    
-                    Connection con = DriverManager.getConnection(url,username,password);
                     Statement stmt = con.createStatement();
 
+                    // url += "/"+dbName; // for test
                     // try {
                     //     stmt.executeUpdate("DROP DATABASE IF EXISTS TEST");
                     // } catch (Exception e) {
@@ -193,52 +199,53 @@ public class HelloMySQL implements RequestHandler<SQSEvent, HashMap<String, Obje
                     }
 
 
-                    // retrieves only the first 10 rows of table
-                    String selectSql = "SELECT * FROM " + tableName + " LIMIT 10";
-                    try (Statement selectStmt = con.createStatement();
-                        ResultSet rs = selectStmt.executeQuery(selectSql)) {
-                        
-                        int row = 1;
+                    // // retrieves only the first 10 rows of table
+                    // String selectSql = "SELECT * FROM " + tableName + " LIMIT 10";
+                    // try (Statement selectStmt = con.createStatement();
+                    //     ResultSet rs = selectStmt.executeQuery(selectSql)) {
+                    //     int row = 1;
+                    //     while (rs.next()) {
+                    //         // Retrieve each column value
+                    //         String c1 = rs.getString("OrderID");
+                    //         String c2 = rs.getString("Region");
+                    //         String c3 = rs.getString("Country");
+                    //         String c4 = rs.getString("ItemType");
+                    //         String c5 = rs.getString("SalesChannel");
+                    //         String c6 = rs.getString("OrderPriority");
+                    //         String c7 = rs.getString("OrderDate");
+                    //         String c8 = rs.getString("ShipDate");
+                    //         int c9 = rs.getInt("UnitsSold");
+                    //         double c10 = rs.getDouble("UnitPrice");
+                    //         double c11 = rs.getDouble("UnitCost");
+                    //         double c12 = rs.getDouble("TotalRevenue");
+                    //         double c13 = rs.getDouble("TotalCost");
+                    //         double c14 = rs.getDouble("TotalProfit");
+                    //         int c15 = rs.getInt("OrderProcessingTime");
+                    //         double c16 = rs.getDouble("GrossMargin");
+                    //         logger.log("Row"+ row++ +": "+ c1 +", "+ c2 +", "+ c3 +", "+ c4 +", "+ c5 +", "+ 
+                    //                 c6 +", "+ c7 +", "+ c8 +", "+ c9 +", "+ c10 +", "+ c11 +", "+ c12 +", "+ 
+                    //                 c13 +", "+ c14 +", "+ c15 +", "+ c16);
+                    //     }
+                    // } catch (SQLException e) {
+                    //     logger.log("SQL Exception while selecting data: " + e.getMessage());
+                    // } catch (Exception e) {
+                    //     logger.log("Got an exception working with MySQL! ");
+                    //     logger.log(e.getMessage());
+                    // }
+
                     
-                        while (rs.next()) {
-                            // Retrieve each column value
-                            String c1 = rs.getString("OrderID");
-                            String c2 = rs.getString("Region");
-                            String c3 = rs.getString("Country");
-                            String c4 = rs.getString("ItemType");
-                            String c5 = rs.getString("SalesChannel");
-                            String c6 = rs.getString("OrderPriority");
-                            String c7 = rs.getString("OrderDate");
-                            String c8 = rs.getString("ShipDate");
-                            int c9 = rs.getInt("UnitsSold");
-                            double c10 = rs.getDouble("UnitPrice");
-                            double c11 = rs.getDouble("UnitCost");
-                            double c12 = rs.getDouble("TotalRevenue");
-                            double c13 = rs.getDouble("TotalCost");
-                            double c14 = rs.getDouble("TotalProfit");
-                            int c15 = rs.getInt("OrderProcessingTime");
-                            double c16 = rs.getDouble("GrossMargin");
-
-
-                            logger.log("Row"+ row++ +": "+ c1 +", "+ c2 +", "+ c3 +", "+ c4 +", "+ c5 +", "+ 
-                                    c6 +", "+ c7 +", "+ c8 +", "+ c9 +", "+ c10 +", "+ c11 +", "+ c12 +", "+ 
-                                    c13 +", "+ c14 +", "+ c15 +", "+ c16);
-
-                        }
-                    } catch (SQLException e) {
-                        logger.log("SQL Exception while selecting data: " + e.getMessage());
-                    } catch (Exception e) {
-                        logger.log("Got an exception working with MySQL! ");
-                        logger.log(e.getMessage());
-                    }
-
-                    con.close();
-
+                    AmazonSQS sqs = AmazonSQSClientBuilder.defaultClient();
+                    SendMessageRequest send_msg_request = new SendMessageRequest().withQueueUrl("https://sqs.us-east-2.amazonaws.com/338749838656/562queueLoadToQuery").withMessageBody("{\"dbBucketName\":\"" + outputBucketName + "\",\"dbFile\":\"" + outputFileName+ "\",\"aggregation\":\"" + aggregation+"\",\"filter\":\""+filter+"\"}").withDelaySeconds(0);
+                    sqs.sendMessage(send_msg_request);
+                    
+                    logger.log("msg from service 1: " + body);
+                    // s3Client.putObject("562project-query-async", "asyncResult.json", body);
                 } catch(JsonParseException e) {
                     logger.log("Error parsing JSON: " + e.getMessage());
                     throw e;
                 }
             }
+            con.close();
         } catch (Exception e) {
             logger.log("Got an exception working with MySQL! ");
             logger.log(e.getMessage());

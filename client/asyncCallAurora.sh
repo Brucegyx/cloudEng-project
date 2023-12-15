@@ -12,9 +12,10 @@ aws s3 ls s3://test.bucket.462562f23.yx
 # set query aggregation function and filter conditions
 aggregation="AVG(GrossMargin)"
 filter="Region='Australia and Oceania'"
-databaseName = "MAIN"
-tableName = "async"
+databaseName="MAIN"
+tableName="async"
 # Call service 1 lambda function with the target bucket name, file name to transform, and the aggregation function and filter conditions
+jsonOrig={"\"bucketname\"":\"test.bucket.462562f23.yx\"","\"filename\"":\"$1\"","\"aggregation\"":"\"$aggregation\"","\"filter\"":"\"$filter\""}
 json={"\"bucketname\"":\"test.bucket.462562f23.yx\"","\"filename\"":\"$1\"","\"aggregation\"":"\"$aggregation\"","\"filter\"":"\"$filter\"","\"databaseName\"":"\"$databaseName\"","\"tableName\"":"\"$tableName\""}
 
 echo "Invoking service 1 asynchronously using API Gateway"

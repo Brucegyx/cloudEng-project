@@ -70,8 +70,8 @@ public class ProcessCSV implements RequestHandler<Request, HashMap<String, Objec
         String filter = request.getFilter();
         logger.log("aggregation:" + aggregation + ", filter:" + filter);
 
-        String dbName = request.getDatabaseName;
-        String tableName = request.getTableName;
+        String dbName = request.getDatabaseName();
+        String tableName = request.getTableName();
         logger.log("DatabaseName:" + dbName + ", TableName:" + tableName);
 
         //create new file on s3

@@ -252,7 +252,7 @@ public class HelloMySQL implements RequestHandler<SQSEvent, HashMap<String, Obje
             logger.log(e.getMessage());
         }
 
-        inspector.consumeResponse(r);
+        // inspector.consumeResponse(r);
         //Collect final information such as total runtime and cpu deltas.
         inspector.inspectAllDeltas();
         return inspector.finish();

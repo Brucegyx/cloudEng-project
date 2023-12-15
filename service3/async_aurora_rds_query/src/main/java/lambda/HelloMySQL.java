@@ -8,9 +8,11 @@ import com.amazonaws.services.lambda.runtime.CognitoIdentity;
 import com.amazonaws.services.lambda.runtime.Context; 
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
+import com.amazonaws.services.lambda.runtime.events.SQSEvent;
 
 import org.json.JSONObject;
 import org.json.JSONArray;
+import com.google.gson.*;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -37,7 +39,7 @@ import java.util.HashMap;
  * @author Wes Lloyd
  * @author Robert Cordingly
  */
-public class HelloMySQL implements RequestHandler<Request, HashMap<String, Object>> {
+public class HelloMySQL implements RequestHandler<SQSEvent, HashMap<String, Object>> {
 
     /**
      * Lambda Function Handler
@@ -46,7 +48,7 @@ public class HelloMySQL implements RequestHandler<Request, HashMap<String, Objec
      * @param context 
      * @return HashMap that Lambda will automatically convert into JSON.
      */
-    public HashMap<String, Object> handleRequest(Request request, Context context) {
+    public HashMap<String, Object> handleRequest(SQSEvent sqsEvent, Context context) {
 
         // Create logger
         LambdaLogger logger = context.getLogger();        
@@ -78,10 +80,10 @@ public class HelloMySQL implements RequestHandler<Request, HashMap<String, Objec
                 Gson gson = new Gson();
                 SqsMessages sqsMsg = gson.fromJson(body, SqsMessages.class);
                 
-                String dbName = sqsMessages.getDatabaseName();
-                String tableName = sqsMessages.getTableName();
-                String filter = sqsMessages.getFilter();
-                String aggregation = sqsMessages.getAggregation();
+                String dbName = sqsMsg.getDatabaseName();
+                String tableName = sqsMsg.getTableName();
+                String filter = sqsMsg.getFilter();
+                String aggregation = sqsMsg.getAggregation();
 
 
                 if (invalidDatabaseOrTable(con, logger, dbName, tableName)) {
@@ -135,10 +137,8 @@ public class HelloMySQL implements RequestHandler<Request, HashMap<String, Objec
             }
             con.close();
         } catch (SQLException sqle) {
-            con.close();
             logger.log("MySQL exception: " + sqle.getMessage());
         } catch (Exception e) {
-            con.close();
             logger.log("General exception :" + e.getMessage());
         }
 

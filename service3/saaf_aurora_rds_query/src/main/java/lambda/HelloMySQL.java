@@ -71,22 +71,20 @@ public class HelloMySQL implements RequestHandler<Request, HashMap<String, Objec
 
             String dbName = request.getDatabaseName();
             String tableName = request.getTableName();
-            String bucket = request.getBucketName();
-            String filename = request.getFileName();
+            String filter = request.getFilter();
+            String aggregation = request.getAggregation();
             
             r.setValue(request.getName());
 
             Connection con = DriverManager.getConnection(url,username,password);
 
             if (invalidDatabaseOrTable(con, dbName, tableName)) {
-                throw new Exception("Database "+ dbName + " or "+ tableName +" does not exist");
+                throw new Exception("Database "+ dbName +" or "+ tableName +" does not exist");
             }
             Statement stmt = con.createStatement();
             stmt.executeUpdate("USE " + dbName);
 
             // perform client query 
-            String filter = request.getFilter();
-            String aggregation = request.getAggregation();
             String query = "";
             if (filter == null || filter.equals("") || filter.equals("*")) {
                 query = "SELECT " + aggregation + " FROM orders";
@@ -146,7 +144,7 @@ public class HelloMySQL implements RequestHandler<Request, HashMap<String, Objec
         return inspector.finish();
     }
 
-    /** returns TRUE is the database OR table DOES NOT exist */
+    /** returns TRUE if the database or table DOES NOT exist */
     private boolean invalidDatabaseOrTable(Connection con, String dbName, String tableName) {
         boolean databaseExists = false;
         boolean tableExists = false;

@@ -32,29 +32,28 @@ public class Response extends saaf.Response {
         this.value = value;
     }
 
-    public List<String> names;
-    public List<String> getNames()
-    {
-        return this.names;
-    }
-    public void setNames(List<String> names)
-    {
-        this.names = names;
-    }
-    public String getNamesString()
-    {
-        StringBuilder sb = new StringBuilder();
-        for (String s : this.names)
-        {
-            sb.append(s + "; ");
-        }
-        return sb.toString();
-    }
+    // public List<String> names;
+    // public List<String> getNames()
+    // {
+    //     return this.names;
+    // }
+    // public void setNames(List<String> names)
+    // {
+    //     this.names = names;
+    // }
+    // public String getNamesString()
+    // {
+    //     StringBuilder sb = new StringBuilder();
+    //     for (String s : this.names)
+    //     {
+    //         sb.append(s + "; ");
+    //     }
+    //     return sb.toString();
+    // }
     
     @Override
-    public String toString()
-    {
-        return "value=" + this.getValue() + " " + this.getNamesString() + " " + super.toString(); 
+    public String toString() {
+        return "value=" + this.getValue() + super.toString(); 
     }
 
 }

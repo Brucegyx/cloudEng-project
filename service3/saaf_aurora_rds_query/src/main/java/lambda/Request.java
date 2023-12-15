@@ -8,8 +8,8 @@ public class Request {
 
     private String databaseName;
     private String tableName;
-    private String bucketName;
-    private String fileName;
+    // private String bucketName;
+    // private String fileName;
     private String aggregation;
     private String filter;
 
@@ -29,21 +29,21 @@ public class Request {
         this.tableName = tableName;
     }
 
-    public String getBucketName() {
-        return bucketName;
-    }
+    // public String getBucketName() {
+    //     return bucketName;
+    // }
 
-    public void setBucketName(String bucketName) {
-        this.bucketName = bucketName;
-    }
+    // public void setBucketName(String bucketName) {
+    //     this.bucketName = bucketName;
+    // }
 
-    public String getFileName() {
-        return fileName;
-    }
+    // public String getFileName() {
+    //     return fileName;
+    // }
 
-    public void setFileName(String filename) {
-        this.fileName = filename;
-    }
+    // public void setFileName(String filename) {
+    //     this.fileName = filename;
+    // }
 
     public String getAggregation() {
         return aggregation;

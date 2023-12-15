@@ -19,6 +19,8 @@ echo $1
 aws s3 cp ../data/$1 s3://test.bucket.462562f23.yx/
 echo "Bucket after upload"
 aws s3 ls s3://test.bucket.462562f23.yx
+
+
 # Call service 1 lambda function with the target bucket name and file name to transform 
 json={"\"bucketname\"":\"test.bucket.462562f23.yx\"","\"filename\"":\"$1\""}
 
@@ -30,6 +32,7 @@ echo $output | jq
 
 echo "Transform Bucket"
 aws s3 ls s3://transformed-csv
+
 ###### calling service 2 ######
 # JSON object to pass to Lambda Function
 transformedFile="transformed-$1"
@@ -42,6 +45,7 @@ time output=`curl -s -H "Content-Type: application/json" -X POST -d $json https:
 echo "Service 2 JSON RESULT:"
 echo $output | jq
 echo ""
+
 
 #### calling service 3 ######
 filenameWithoutSuffix=${1%.csv}   # remove suffix from filename

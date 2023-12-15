@@ -33,9 +33,11 @@ aws s3 ls s3://transformed-csv
 ###### calling service 2 ######
 # JSON object to pass to Lambda Function
 transformedFile="transformed-$1"
+databaseName="MAIN"
+tableName="orders"
 echo $transformedFile
 # json={"\"outputBucketName\"":\"transformed-csv\"","\"transformedFileName\"":\"$transformedFile\""}
-json={"\"databaseName\"":"\"MAIN\"","\"tableName\"":"\"orders100\"","\"bucketName\"":"\"transformed-csv\"","\"fileName\"":"\"transformed-100_Sales_Records.csv\""}
+json={"\"databaseName\"":"\"$databaseName\"","\"tableName\"":"\"$tableName\"","\"bucketName\"":"\"transformed-csv\"","\"fileName\"":"\"$transformedFile\""}
 
 echo "Invoking Service 2 using API Gateway"
 time output=`curl -s -H "Content-Type: application/json" -X POST -d $json https://h1x4psdcia.execute-api.us-east-2.amazonaws.com/load`
@@ -48,7 +50,7 @@ echo ""
 
 #### calling service 3 ######
 
-json={"\"databaseName\"":"\"MAIN\"","\"tableName\"":"\"orders100\"","\"aggregation\"":"\"MAX(UnitsSold)\"","\"filter\"":"\"\""}
+json={"\"databaseName\"":"\"$databaseName\"","\"tableName\"":"\"$tableName\"","\"aggregation\"":"\"MAX(UnitsSold)\"","\"filter\"":"\"\""}
 echo "Invoking Service 3 using API Gateway"
 echo $json | jq
 time output=`curl -s -H "Content-Type: application/json" -X POST -d $json https://8pgp3z1mr7.execute-api.us-east-2.amazonaws.com/query`

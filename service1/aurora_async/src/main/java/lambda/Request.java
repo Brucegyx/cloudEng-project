@@ -9,6 +9,9 @@ public class Request {
     private String filename;
     private String aggregation;
     private String filter;
+    private String databaseName;
+    private String tableName;
+
     // create getter and setter for these fields
     String name;
     public String getAggregation() {
@@ -40,9 +43,6 @@ public class Request {
         this.name = name;
     }
 
-    public Request( ) {
-
-    }
 
     public String getBucketname() {
         return bucketname;
@@ -58,6 +58,22 @@ public class Request {
 
     public void setFilename(String filename) {
         this.filename = filename;
+    }
+
+    public String getDatabaseName() {
+        return databaseName;
+    }
+
+    public void setDatabaseName(String databaseName) {
+        this.databaseName = databaseName;
+    }
+
+    public String getTableName() {
+        return this.tableName;
+    }
+
+    public void setTableName(String tableName) {
+        this.tableName = tableName;
     }
 
     

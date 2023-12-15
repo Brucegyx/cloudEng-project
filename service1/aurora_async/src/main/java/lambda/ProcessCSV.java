@@ -65,9 +65,15 @@ public class ProcessCSV implements RequestHandler<Request, HashMap<String, Objec
         String bucketname = request.getBucketname();
         String filename = request.getFilename();
         logger.log("finding file in bucketname:" + bucketname + ", filename:" + filename);
+
         String aggregation = request.getAggregation();
         String filter = request.getFilter();
         logger.log("aggregation:" + aggregation + ", filter:" + filter);
+
+        String dbName = request.getDatabaseName;
+        String tableName = request.getTableName;
+        logger.log("DatabaseName:" + dbName + ", TableName:" + tableName);
+
         //create new file on s3
         
         //get object file using bucket name and filename
@@ -167,7 +173,12 @@ public class ProcessCSV implements RequestHandler<Request, HashMap<String, Objec
         logger.log("ProcessCSV in bucketname:" + outputBucketname + ", filename after transformaiton:" + transformedFile );
         
         String queURL = "https://sqs.us-east-2.amazonaws.com/338749838656/Aurora-queue";
-        String bodyMsg = "{\"transformedBucketName\":\"" + outputBucketname + "\",\"transformedFileName\":\"" + transformedFile+ "\",\"aggregation\":\"" + aggregation+"\",\"filter\":\""+filter+"\"}";
+        String bodyMsg = "{\"transformedBucketName\":\"" + outputBucketname + "\","
+                        + "\"transformedFileName\":\"" + transformedFile+ "\","
+                        + "\"databaseName\":\"" + dbName+"\","
+                        + "\"tableName\":\"" + tableName+"\","
+                        + "\"aggregation\":\"" + aggregation+"\","
+                        + "\"filter\":\""+filter+"\"}";
         
         AmazonSQS sqs = AmazonSQSClientBuilder.defaultClient();
         SendMessageRequest send_msg_request = new SendMessageRequest()

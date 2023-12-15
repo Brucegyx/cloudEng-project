@@ -70,76 +70,83 @@ public class HelloMySQL implements RequestHandler<Request, HashMap<String, Objec
             String password = properties.getProperty("password");
             String driver = properties.getProperty("driver");
 
-            String dbName = request.getDatabaseName();
-            String tableName = request.getTableName();
-            String filter = request.getFilter();
-            String aggregation = request.getAggregation();
-
             Connection con = DriverManager.getConnection(url,username,password);
 
-            if (invalidDatabaseOrTable(con, logger, dbName, tableName)) {
-                con.close();
-                throw new Exception("Database "+ dbName +" or "+ tableName +" does not exist");
-            }
-            Statement stmt = con.createStatement();
-            stmt.executeUpdate("USE " + dbName);
-
-            // perform client query 
-            String query = "";
-            if (filter == null || filter.equals("") || filter.equals("*")) {
-                query = "SELECT "+ aggregation +" FROM "+ tableName;
-            } else { 
-                query = "SELECT "+ aggregation +" FROM "+ tableName +" WHERE "+ filter;
-            }
-            PreparedStatement ps = con.prepareStatement(query);
-            ResultSet rs = ps.executeQuery();
-            ResultSetMetaData rsmd = rs.getMetaData();
-            int columnsNumber = rsmd.getColumnCount();
-            List<String> columnNames = new ArrayList<String>();
-            for (int i = 1; i <= columnsNumber; i++) {
-                columnNames.add(rsmd.getColumnName(i));
-            }
-            JSONArray result = new JSONArray();
-            while (rs.next()) {
-                JSONObject obj = new JSONObject();
-                for (String column : columnNames) {
-                    try {
-                        obj.put(column, rs.getString(column));
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
+            for (SQSEvent.SQSMessage msg : sqsEvent.getRecords()) {
+                String body = msg.getBody();
+                logger.log("body=" + body);
+                Gson gson = new Gson();
+                SqsMessages sqsMsg = gson.fromJson(body, SqsMessages.class);
                 
-                result.put(obj);
-            }
+                String dbName = sqsMessages.getDatabaseName();
+                String tableName = sqsMessages.getTableName();
+                String filter = sqsMessages.getFilter();
+                String aggregation = sqsMessages.getAggregation();
 
-            logger.log("result=" + result.toString());
+
+                if (invalidDatabaseOrTable(con, logger, dbName, tableName)) {
+                    con.close();
+                    throw new Exception("Database "+ dbName +" or "+ tableName +" does not exist");
+                }
+                Statement stmt = con.createStatement();
+                stmt.executeUpdate("USE " + dbName);
+
+                // perform client query 
+                String query = "";
+                if (filter == null || filter.equals("") || filter.equals("*")) {
+                    query = "SELECT "+ aggregation +" FROM "+ tableName;
+                } else { 
+                    query = "SELECT "+ aggregation +" FROM "+ tableName +" WHERE "+ filter;
+                }
+                PreparedStatement ps = con.prepareStatement(query);
+                ResultSet rs = ps.executeQuery();
+                ResultSetMetaData rsmd = rs.getMetaData();
+                int columnsNumber = rsmd.getColumnCount();
+                List<String> columnNames = new ArrayList<String>();
+                for (int i = 1; i <= columnsNumber; i++) {
+                    columnNames.add(rsmd.getColumnName(i));
+                }
+                JSONArray result = new JSONArray();
+                while (rs.next()) {
+                    JSONObject obj = new JSONObject();
+                    for (String column : columnNames) {
+                        try {
+                            obj.put(column, rs.getString(column));
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    
+                    result.put(obj);
+                }
+
+                logger.log("result=" + result.toString());
+                
+                rs.close();
+                // set the array of JSON objects as the query result in the response
+                r.setValue(result.toString()); 
+                
+                // sleep to ensure that concurrent calls obtain separate Lambdas
+                try {Thread.sleep(200);}
+                catch (InterruptedException ie) {
+                    logger.log("interrupted while sleeping...");
+                }
+                inspector.consumeResponse(r);
+            }
             con.close();
-            rs.close();
-            // set the array of JSON objects as the query result in the response
-            r.setValue(result.toString()); 
-            
-            // sleep to ensure that concurrent calls obtain separate Lambdas
-            try {Thread.sleep(200);}
-            catch (InterruptedException ie) {
-                logger.log("interrupted while sleeping...");
-            }
-
         } catch (SQLException sqle) {
+            con.close();
             logger.log("MySQL exception: " + sqle.getMessage());
         } catch (Exception e) {
+            con.close();
             logger.log("General exception :" + e.getMessage());
         }
 
-        //Print log information to the Lambda log as needed
-        //logger.log("log message...");
-        
-        inspector.consumeResponse(r);
-        
         //****************END FUNCTION IMPLEMENTATION***************************
         
         //Collect final information such as total runtime and cpu deltas.
         inspector.inspectAllDeltas();
+        logger.log(inspector.finish().toString());
         return inspector.finish();
     }
 

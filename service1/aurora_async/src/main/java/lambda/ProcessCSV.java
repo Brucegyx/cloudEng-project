@@ -173,7 +173,7 @@ public class ProcessCSV implements RequestHandler<Request, HashMap<String, Objec
         
         logger.log("ProcessCSV in bucketname:" + outputBucketname + ", filename after transformaiton:" + transformedFile );
         
-        String queURL = "https://sqs.us-east-2.amazonaws.com/338749838656/Aurora-queue";
+        String queURL = "https://sqs.us-east-2.amazonaws.com/338749838656/Aurora-load";
         String bodyMsg = "{\"transformedBucketName\":\"" + outputBucketname + "\","
                         + "\"transformedFileName\":\"" + transformedFile+ "\","
                         + "\"databaseName\":\"" + dbName+"\","

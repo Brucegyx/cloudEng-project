@@ -6,6 +6,7 @@ import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.events.SQSEvent;
+
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.event.S3EventNotification.S3EventNotificationRecord;
@@ -189,44 +190,44 @@ public class HelloMySQL implements RequestHandler<SQSEvent, HashMap<String, Obje
                     }
 
 
-                    // retrieves only the first 10 rows of table
-                    String selectSql = "SELECT * FROM " + tableName + " LIMIT 10";
-                    try (Statement selectStmt = con.createStatement();
-                        ResultSet rs = selectStmt.executeQuery(selectSql)) {
-                        int row = 1;
-                        while (rs.next()) {
-                            // Retrieve each column value
-                            String c1 = rs.getString("OrderID");
-                            String c2 = rs.getString("Region");
-                            String c3 = rs.getString("Country");
-                            String c4 = rs.getString("ItemType");
-                            String c5 = rs.getString("SalesChannel");
-                            String c6 = rs.getString("OrderPriority");
-                            String c7 = rs.getString("OrderDate");
-                            String c8 = rs.getString("ShipDate");
-                            int c9 = rs.getInt("UnitsSold");
-                            double c10 = rs.getDouble("UnitPrice");
-                            double c11 = rs.getDouble("UnitCost");
-                            double c12 = rs.getDouble("TotalRevenue");
-                            double c13 = rs.getDouble("TotalCost");
-                            double c14 = rs.getDouble("TotalProfit");
-                            int c15 = rs.getInt("OrderProcessingTime");
-                            double c16 = rs.getDouble("GrossMargin");
-                            logger.log("Row"+ row++ +": "+ c1 +", "+ c2 +", "+ c3 +", "+ c4 +", "+ c5 +", "+ 
-                                    c6 +", "+ c7 +", "+ c8 +", "+ c9 +", "+ c10 +", "+ c11 +", "+ c12 +", "+ 
-                                    c13 +", "+ c14 +", "+ c15 +", "+ c16);
-                        }
-                    } catch (SQLException e) {
-                        logger.log("SQL Exception while selecting data: " + e.getMessage());
-                    } catch (Exception e) {
-                        logger.log("Got an exception working with MySQL! ");
-                        logger.log(e.getMessage());
-                    }
+                    // // retrieves only the first 10 rows of table
+                    // String selectSql = "SELECT * FROM " + tableName + " LIMIT 10";
+                    // try (Statement selectStmt = con.createStatement();
+                    //     ResultSet rs = selectStmt.executeQuery(selectSql)) {
+                    //     int row = 1;
+                    //     while (rs.next()) {
+                    //         // Retrieve each column value
+                    //         String c1 = rs.getString("OrderID");
+                    //         String c2 = rs.getString("Region");
+                    //         String c3 = rs.getString("Country");
+                    //         String c4 = rs.getString("ItemType");
+                    //         String c5 = rs.getString("SalesChannel");
+                    //         String c6 = rs.getString("OrderPriority");
+                    //         String c7 = rs.getString("OrderDate");
+                    //         String c8 = rs.getString("ShipDate");
+                    //         int c9 = rs.getInt("UnitsSold");
+                    //         double c10 = rs.getDouble("UnitPrice");
+                    //         double c11 = rs.getDouble("UnitCost");
+                    //         double c12 = rs.getDouble("TotalRevenue");
+                    //         double c13 = rs.getDouble("TotalCost");
+                    //         double c14 = rs.getDouble("TotalProfit");
+                    //         int c15 = rs.getInt("OrderProcessingTime");
+                    //         double c16 = rs.getDouble("GrossMargin");
+                    //         logger.log("Row"+ row++ +": "+ c1 +", "+ c2 +", "+ c3 +", "+ c4 +", "+ c5 +", "+ 
+                    //                 c6 +", "+ c7 +", "+ c8 +", "+ c9 +", "+ c10 +", "+ c11 +", "+ c12 +", "+ 
+                    //                 c13 +", "+ c14 +", "+ c15 +", "+ c16);
+                    //     }
+                    // } catch (SQLException e) {
+                    //     logger.log("SQL Exception while selecting data: " + e.getMessage());
+                    // } catch (Exception e) {
+                    //     logger.log("Got an exception working with MySQL! ");
+                    //     logger.log(e.getMessage());
+                    // }
 
                     
                     AmazonSQS sqs = AmazonSQSClientBuilder.defaultClient();
 
-                    String queURL = "https://sqs.us-east-2.amazonaws.com/338749838656/Aurora-load";
+                    String queURL = "https://sqs.us-east-2.amazonaws.com/338749838656/Aurora-queue";
                     String bodyMsg = "{\"databaseName\":\"" + dbName+"\","
                                     + "\"tableName\":\"" + tableName+"\","
                                     + "\"aggregation\":\"" + aggregation+"\","
@@ -248,14 +249,13 @@ public class HelloMySQL implements RequestHandler<SQSEvent, HashMap<String, Obje
             }
             con.close();
         } catch (Exception e) {
-            logger.log("Got an exception working with MySQL! ");
+            logger.log("Got an exception ");
             logger.log(e.getMessage());
         }
 
-        // inspector.consumeResponse(r);
-        //Collect final information such as total runtime and cpu deltas.
         inspector.inspectAllDeltas();
-        return inspector.finish();
+        logger.log("Service2 SQS: " + inspector.finish().toString());
+        return response;
     }
 
 }

@@ -5,7 +5,6 @@
  */
 package lambda;
 
-import java.lang.annotation.Native;
 import java.util.List;
 
 /**
@@ -21,15 +20,6 @@ public class Response extends saaf.Response {
     // ADD getters and setters for custom attributes here.
     //
 
-    //return MySQL version
-    private String mysqlversion;
-    public String getMySQLVersion(){
-        return mysqlversion;
-    }
-    public void setMySQLVersion(String mysqlversion){
-        this.mysqlversion = mysqlversion;
-    }
-    
     // Return value
     private String value;
     public String getValue()
@@ -40,7 +30,7 @@ public class Response extends saaf.Response {
     {
         this.value = value;
     }
-
+    
     public List<String> names;
     public List<String> getNames()
     {
@@ -50,21 +40,11 @@ public class Response extends saaf.Response {
     {
         this.names = names;
     }
-    public String getNamesString()
-    {
-        StringBuilder sb = new StringBuilder();
-        for (String s : this.names)
-        {
-            sb.append(s + "; ");
-        }
-        return sb.toString();
-    }
-    
+
     @Override
     public String toString()
     {
-        return "value=" + this.getValue() + " " + this.getNamesString() + " \nmysqlversion=" +
-                this.getMySQLVersion() + super.toString(); 
+        return "value=" + this.getValue() + super.toString(); 
     }
 
 }
